@@ -5,7 +5,7 @@ import Base from "../layouts/Base.astro";
   <section class="wrap net-head">
     <p class="kicker">Simulation</p>
     <h1>A corridor of Tashkent in 3D</h1>
-    <p class="lede">Click up to five signalised junctions along a road, in the order you drive. The middle one stands for the junction of your video: the vehicles measured there drive the whole corridor, two junctions before it and two after, under the timing now and under OQIM's plan.</p>
+    <p class="lede">Click up to five signalised junctions along a road, in the order you drive. The middle one stands for the junction of your video: the vehicles measured there drive the whole corridor, two junctions before it and two after, under the timing now and with OQIM's green wave.</p>
   </section>
   <section class="wrap">
     <div class="map-wrap">
@@ -29,7 +29,7 @@ import Base from "../layouts/Base.astro";
         <p class="k">Watch</p>
         <div class="row" role="group" aria-label="Signal timing">
           <button class="btn mode" type="button" data-mode="now" aria-pressed="true">Timing now</button>
-          <button class="btn mode" type="button" data-mode="oqim" aria-pressed="false">OQIM plan + green wave</button>
+          <button class="btn mode" type="button" data-mode="oqim" aria-pressed="false">OQIM green wave</button>
         </div>
         <div class="row" role="group" aria-label="Speed">
           <button class="btn ghost" type="button" id="play">Pause</button>
@@ -39,7 +39,7 @@ import Base from "../layouts/Base.astro";
         <div id="kpi"></div>
       </div>
     </div>
-    <p class="hint notes" id="notes">Simulation, not a measurement. The vehicles are the ones measured on the video (repeated to fill 10 minutes); they enter upstream so that, at free flow, they reach the middle junction when they reached the stop line on the video, and they follow the Intelligent Driver Model (Treiber et al. 2000) at up to 50 km/h. Timing now: every junction runs the cycle and green measured on the video; the real offsets between junctions are unknown, so each starts its cycle at a fixed pseudo-random time. OQIM: the searched plan from the audit at every junction, offsets for a green wave at 45 km/h. One direction only; cross streets are not simulated. Roads and junctions: OpenStreetMap contributors (ODbL 1.0). Map: OpenFreeMap, OpenMapTiles.</p>
+    <p class="hint notes" id="notes">Simulation, not a measurement. The vehicles are the ones measured on the video (repeated to fill 10 minutes); they enter upstream so that, at free flow, they reach the middle junction when they reached the stop line on the video, and they follow the Intelligent Driver Model (Treiber et al. 2000) at up to 50 km/h. Timing now: every junction runs the cycle and green measured on the video; the real offsets between junctions are unknown, so each starts its cycle at a fixed pseudo-random time. OQIM: the same cycle and green, with offsets for a green wave at 45 km/h, so only the coordination changes and the cross streets keep their time. One direction only; cross streets are not simulated. Roads and junctions: OpenStreetMap contributors (ODbL 1.0). Map: OpenFreeMap, OpenMapTiles.</p>
   </section>
 </Base>
 

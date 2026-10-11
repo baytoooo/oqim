@@ -46,7 +46,8 @@ Browser only. Inference on the user's device (WebGPU, or WebAssembly on the CPU)
 2. **Read the lights:** colour contrast of the lit lamp inside the head's box, scaled per clip; if no head is visible, greens come from when the queue moves off.
 3. **Measure:** stop-line crossings by side, time stood before the line, arrivals on green, discharge rate (busiest 10 s of each green), red-light runs, queue.
 4. **Replay:** a point-queue model runs the clip's own vehicles through the junction. It must first reproduce the measured crossings.
-5. **Plans:** now, Webster (1958), a tuned fixed plan searched on the replay, actuated, and OQIM predictive (rollout over the next 30 s of arrivals).
+5. **Plans:** now, Webster (1958), a fixed plan searched on the replay (cycle, split and the phases out of view), actuated, max-pressure (Varaiya 2013), and OQIM predictive (rollout over the next 30 s of arrivals).
+6. **Corridor:** the same vehicles on up to five real junctions of Tashkent in 3D, with a green wave.
 
 ---
 
@@ -66,6 +67,21 @@ Four clips of one Tashkent junction (the organisers' footage, 18 minutes), south
 - Known failure cases: short clips (under 2 cycles, see C3905), long queues where tracks break, a stop line drawn over two directions, free right turns counted as red crossings, night and rain not yet measured on a test set of our own.
 
 Source: these numbers were computed with the elimination pipeline's tracks (YOLO26m at 1280 px, 10 fps); the browser runs YOLO26s at 5 fps. Re-run in the browser before the defence and update if they differ.
+
+---
+
+## 5b. From one junction to a corridor (simulation, 0:30 inside the demo)
+
+https://oqim-audit.vercel.app/network: pick up to five signalised junctions of Tashkent on the map (OpenStreetMap road graph, 309 signalised junctions in the centre); the vehicles measured on the video drive them in 3D, two junctions before the audited one and two after.
+
+Sample corridor, Amir Temur Avenue northbound, 1.46 km, 5 signals, 3 lanes (from the discharge rate on the video), 224 vehicles in 10 minutes:
+
+| | Timing now (offsets unknown, taken pseudo-random) | OQIM green wave (same cycle and green) |
+|---|---|---|
+| Mean delay at the signals | 141 s | 24 s |
+| Stops per vehicle | 4.58 | 0.60 |
+
+Say clearly: this is a simulation (Intelligent Driver Model), one direction, cross streets not simulated; only the offsets change, so the cross streets keep their time. The real offsets of these junctions are unknown to us.
 
 ---
 

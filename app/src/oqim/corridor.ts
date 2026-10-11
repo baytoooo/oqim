@@ -139,8 +139,9 @@ export function runCorridor(length: number, signals: Signal[], demand: Demand, t
 /**
  * Signals of a corridor. "now": every junction runs the cycle and green measured on the video,
  * not coordinated (each starts its cycle at its own time, a fixed pseudo-random offset: we do not
- * know the real ones). "oqim": the searched plan's cycle and green at every junction, offsets for a
- * green wave at `wave` m/s from the first junction.
+ * know the real ones). "oqim": the same cycle and green, with offsets for a green wave at `wave`
+ * m/s from the first junction. Only the offsets change, so the cross streets, which are not
+ * simulated, keep their time: the difference is the coordination alone.
  */
 export function corridorSignals(at: number[], mode: "now" | "oqim", plan: { cycle: number; green: number; tunedCycle: number; tunedGreen: number }, wave = 45 / 3.6): Signal[] {
   return at.map((x, i) => {
@@ -148,6 +149,6 @@ export function corridorSignals(at: number[], mode: "now" | "oqim", plan: { cycl
       const offset = ((i * 0.61803398875) % 1) * plan.cycle;
       return { at: x, cycle: plan.cycle, green: plan.green, offset, amber: 3 };
     }
-    return { at: x, cycle: plan.tunedCycle, green: plan.tunedGreen, offset: (x - at[0]) / wave, amber: 3 };
+    return { at: x, cycle: plan.cycle, green: plan.green, offset: (x - at[0]) / wave, amber: 3 };
   });
 }

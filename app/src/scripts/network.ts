@@ -253,10 +253,22 @@ let input: Input;
 let picked: number[] = []; // indices into roads.junctions
 let route: Route | null = null;
 let mode: "now" | "oqim" = "now";
-let sim: Corridor | null = null;
+let sims: Corridor[] = [];
+/** Lanes of the corridor: from the discharge rate measured on the video, 1900 vehicles an hour of
+ * green per lane (HCM's base saturation flow). */
+let lanes = 1;
 let playing = true;
 let lastFrame = 0;
 let lastDraw = 0;
+
+/** The demand of the corridor, dealt to its lanes in turn. */
+function laneDemands(r: Route): Demand[] {
+  const all = demandFor(r);
+  return Array.from({ length: lanes }, (_, k) => ({
+    enter: all.enter.filter((_, i) => i % lanes === k),
+    cls: all.cls.filter((_, i) => i % lanes === k),
+  }));
+}
 
 function demandFor(r: Route): Demand {
   const mid = Math.floor((r.stops.length - 1) / 2);
@@ -283,7 +295,17 @@ function signalsFor(r: Route, m: "now" | "oqim"): Signal[] {
 
 function restart(): void {
   if (!route) return;
-  sim = new Corridor(route.length, signalsFor(route, mode), demandFor(route));
+  const sg = signalsFor(route, mode);
+  sims = laneDemands(route).map((d) => new Corridor(route!.length, sg, d));
+}
+
+/** Corridor statistics over all lanes. */
+function runAll(r: Route, m: "now" | "oqim") {
+  const sg = signalsFor(r, m);
+  const parts = laneDemands(r).map((d) => runCorridor(r.length, sg, d));
+  const n = parts.reduce((a, p) => a + p.finished, 0);
+  const w = (k: "meanTravel" | "meanDelay" | "meanStops") => (n ? parts.reduce((a, p) => a + p[k] * p.finished, 0) / n : 0);
+  return { finished: n, meanTravel: w("meanTravel"), meanDelay: w("meanDelay"), meanStops: w("meanStops") };
 }
 
 function renderKpi(): void {
@@ -291,9 +313,8 @@ function renderKpi(): void {
     $("kpi").innerHTML = `<p class="hint">Pick at least two junctions, or press Sample corridor.</p>`;
     return;
   }
-  const d = demandFor(route);
-  const now = runCorridor(route.length, signalsFor(route, "now"), d);
-  const oq = runCorridor(route.length, signalsFor(route, "oqim"), d);
+  const now = runAll(route, "now");
+  const oq = runAll(route, "oqim");
   const ch = (a: number, b: number) => (a > 0 ? `${b <= a ? "" : "+"}${(((b - a) / a) * 100).toFixed(0)}%` : "");
   const cls = (a: number, b: number) => (b < a * 0.98 ? "good" : b > a * 1.02 ? "bad" : "");
   $("kpi").innerHTML = `<table class="t"><thead><tr><th></th><th class="num">Timing now</th><th class="num">OQIM</th><th class="num">Change</th></tr></thead><tbody>
@@ -302,7 +323,7 @@ function renderKpi(): void {
     <tr><td>Mean delay at the signals, s</td><td class="num">${now.meanDelay.toFixed(0)}</td><td class="num">${oq.meanDelay.toFixed(0)}</td><td class="num ${cls(now.meanDelay, oq.meanDelay)}">${ch(now.meanDelay, oq.meanDelay)}</td></tr>
     <tr><td>Stops per vehicle</td><td class="num">${now.meanStops.toFixed(2)}</td><td class="num">${oq.meanStops.toFixed(2)}</td><td class="num ${cls(now.meanStops, oq.meanStops)}">${ch(now.meanStops, oq.meanStops)}</td></tr>
     </tbody></table>
-    <p class="hint">${(route.length / 1000).toFixed(2)} km, ${route.stops.length} signals. Now: cycle ${input.cycle.toFixed(0)} s, green ${input.green.toFixed(0)} s. OQIM: cycle ${input.tunedCycle.toFixed(0)} s, green ${input.tunedGreen.toFixed(0)} s, green wave at 45 km/h.</p>`;
+    <p class="hint">${(route.length / 1000).toFixed(2)} km, ${route.stops.length} signals, ${lanes} lane${lanes > 1 ? "s" : ""} (from the discharge rate on the video, ${(3600 / input.headway).toFixed(0)} vehicles an hour of green). Both: cycle ${input.cycle.toFixed(0)} s, green ${input.green.toFixed(0)} s as measured on the video. OQIM changes only the offsets, for a green wave at 45 km/h, so the cross streets keep their time.</p>`;
 }
 
 function renderPicked(): void {
@@ -337,20 +358,24 @@ function setRoute(): void {
 }
 
 function draw(): void {
-  if (!route || !sim) return;
+  if (!route || !sims.length) return;
   const r = route;
-  const cars = sim.cars.map((c) => {
-    const { p, th } = along(r, c.s - (c.length / 2), 3.2);
-    return {
-      type: "Feature" as const,
-      properties: { h: HEIGHT[c.cls] ?? 1.5, color: c.stopped ? "#ff5b4c" : COLOR[c.cls] ?? "#f1eee6" },
-      geometry: { type: "Polygon" as const, coordinates: [box(p, th, LENGTH[c.cls] ?? 4.5, WIDTH[c.cls] ?? 1.9)] },
-    };
-  });
+  const sim = sims[0];
+  const cars = sims.flatMap((lane, k) =>
+    lane.cars.map((c) => {
+      const { p, th } = along(r, c.s - c.length / 2, 1.9 + 3.4 * k);
+      return {
+        type: "Feature" as const,
+        properties: { h: HEIGHT[c.cls] ?? 1.5, color: c.stopped ? "#ff5b4c" : COLOR[c.cls] ?? "#f1eee6" },
+        geometry: { type: "Polygon" as const, coordinates: [box(p, th, LENGTH[c.cls] ?? 4.5, WIDTH[c.cls] ?? 1.9)] },
+      };
+    }),
+  );
   (map.getSource("cars") as GeoJSONSource).setData({ type: "FeatureCollection", features: cars });
+  const edge = 1.9 + 3.4 * (lanes - 1) + 2.5;
   const sigs = sim.signals.map((sg) => {
-    const { p, th } = along(r, sg.at, 8.5);
-    const light = lightAt(sg, sim!.t);
+    const { p, th } = along(r, sg.at, edge + 1);
+    const light = lightAt(sg, sim.t);
     return {
       type: "Feature" as const,
       properties: { h: 6, color: light === "green" ? "#3fd27f" : light === "amber" ? "#ffb224" : "#ff5b4c" },
@@ -358,23 +383,25 @@ function draw(): void {
     };
   });
   const lines = sim.signals.map((sg) => {
-    const a = along(r, sg.at, 0.5).p, b = along(r, sg.at, 7).p;
-    return { type: "Feature" as const, properties: { color: lightAt(sg, sim!.t) === "green" ? "#3fd27f" : "#ff5b4c" }, geometry: { type: "LineString" as const, coordinates: [a, b] } };
+    const a = along(r, sg.at, 0.2).p, b = along(r, sg.at, edge).p;
+    return { type: "Feature" as const, properties: { color: lightAt(sg, sim.t) === "green" ? "#3fd27f" : "#ff5b4c" }, geometry: { type: "LineString" as const, coordinates: [a, b] } };
   });
-  (map.getSource("signals") as GeoJSONSource).setData({ type: "FeatureCollection", features: [...sigs] });
+  (map.getSource("signals") as GeoJSONSource).setData({ type: "FeatureCollection", features: sigs });
   (map.getSource("stoplines") as GeoJSONSource).setData({ type: "FeatureCollection", features: lines });
   const m = Math.floor(sim.t / 60), s = Math.floor(sim.t % 60);
   $("clock").textContent = `${m}:${String(s).padStart(2, "0")}`;
-  const st = sim.stats();
-  $("live").textContent = `${mode === "now" ? "Timing now" : "OQIM plan + green wave"} · on the road ${sim.cars.length} · standing ${sim.waiting} · through ${st.finished}`;
+  const onRoad = sims.reduce((a, l) => a + l.cars.length, 0);
+  const standing = sims.reduce((a, l) => a + l.waiting, 0);
+  const through = sims.reduce((a, l) => a + l.finished.length, 0);
+  $("live").textContent = `${mode === "now" ? "Timing now" : "OQIM green wave"} · on the road ${onRoad} · standing ${standing} · through ${through}`;
 }
 
 function tick(ts: number): void {
   const dt = Math.min(0.1, (ts - (lastFrame || ts)) / 1000);
   lastFrame = ts;
-  if (playing && sim && route) {
+  if (playing && sims.length && route) {
     const steps = Math.round((dt * Number($<HTMLSelectElement>("speed").value)) / 0.1);
-    for (let i = 0; i < steps && sim.t < SIM_SECONDS + 200; i++) sim.step();
+    for (let i = 0; i < steps && sims[0].t < SIM_SECONDS + 200; i++) for (const l of sims) l.step();
     if (ts - lastDraw > 66) {
       draw();
       lastDraw = ts;
@@ -412,13 +439,17 @@ function sampleCorridor(): number[] {
  * dark map on which the page draws its own road graph. */
 async function baseStyle(): Promise<maplibregl.StyleSpecification> {
   for (let i = 0; i < 3; i++) {
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), 7000);
     try {
-      const r = await fetch("https://tiles.openfreemap.org/styles/liberty");
+      const r = await fetch("https://tiles.openfreemap.org/styles/liberty", { signal: ctl.signal });
       if (r.ok) return (await r.json()) as maplibregl.StyleSpecification;
     } catch {
       /* try again */
+    } finally {
+      clearTimeout(timer);
     }
-    await new Promise((ok) => setTimeout(ok, 700));
+    await new Promise((ok) => setTimeout(ok, 500));
   }
   return {
     version: 8,
@@ -436,6 +467,7 @@ async function main(): Promise<void> {
     /* no storage */
   }
   if (!input || !input.arrivals?.length) input = await json<Input>(["/data/sample_demand.json"]);
+  lanes = Math.max(1, Math.min(4, Math.round(3600 / input.headway / 1900)));
   $("demand-note").textContent = `Demand: the ${input.arrivals.length} vehicles measured on ${input.clip} (${input.approach}, ${(input.duration / 60).toFixed(1)} min), repeated to fill ${SIM_SECONDS / 60} min.${input.clip.includes("sample") ? " Run an audit first to use your own video." : ""}`;
 
   roads = await json<Roads>([`${ASSET_CDN}/data/tashkent_roads.json`, "/data/tashkent_roads.json"]).catch(() => json<Roads>(["/data/tashkent_roads.json"]));
