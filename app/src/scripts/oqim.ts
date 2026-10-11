@@ -6,6 +6,7 @@ import { audit, type Audit, type ModeResult } from "../oqim/audit";
 import { SAMPLE_CONFIG, SAMPLES } from "../oqim/samples";
 import type { AuditConfig, Pt, Rect } from "../oqim/types";
 import type { ClipResult } from "../lib/types";
+import { CLASSES } from "../lib/classes";
 import { ASSET_CDN } from "../config";
 import { LocalApi, WORK_WIDTH } from "./local_api";
 
@@ -423,6 +424,8 @@ function renderReport(a: Audit, r: ClipResult): void {
     .join("")}</tbody></table></div>`;
   $("check").textContent = `Model check: replayed under the lights read from the video, the model sends ${a.check.vehicles} vehicles over the line with a median error of ${fmt(a.check.departureError, 2)} s against the video, and gives a mean wait of ${fmt(a.check.modelWait)} s against ${fmt(a.check.measuredWait)} s measured (time standing before the line). Plans are judged only after this check.`;
 
+  renderEvents(a, r);
+  renderPcd(a);
   renderTimeline(a);
   renderApproachTable(a);
   setupVideo(a, r);
@@ -595,4 +598,86 @@ function networkInput(a: Audit, r: ClipResult) {
     nowWait: a.modes[0].sim.meanDelay,
     predictiveWait: pred?.sim.meanDelay ?? null,
   };
+}
+
+// ---------------------------------------------------------------- events and the coordination diagram
+
+const EVENT_COLOR: Record<string, string> = {
+  red_light: "#ff5b4c", stop_line: "#ffa45b", failure_to_yield: "#ff7ac6", wrong_way: "#c39bff", accident: "#ff3b30",
+  congestion: "#ffb224", jaywalking: "#5ab0ff", stopped_vehicle: "#9aa0a8", red_light_run: "#ff5b4c",
+};
+const eventName = (k: string) => CLASSES.find((c) => c.key === k)?.name ?? k.replace(/_/g, " ");
+
+/** The elimination rules' events (src/pipeline: every rule on our junction's map, or on any other
+ * view the rules that need no map: wrong way and collisions), plus the audit's red-light runs. */
+function renderEvents(a: Audit, r: ClipResult): void {
+  const items: { start: number; end: number; label: string; note: string }[] = (r.events ?? []).map(([s0, e0, l]) => ({ start: s0, end: e0, label: l, note: "" }));
+  const ev = r.evidence ?? [];
+  for (const it of items) {
+    const e = ev.find((x) => x.label === it.label && x.start < it.end && x.end > it.start);
+    if (e) it.note = e.note;
+  }
+  // the audit's own red-light runs, on any view with a signal head marked
+  if (r.mode === "generic")
+    for (const ap of a.approaches) for (const c of ap.redRuns) items.push({ start: c.t, end: c.t + 1.5, label: "red_light", note: `${ap.name}: crossed ${(c.t).toFixed(1)} s, on red` });
+  items.sort((x, y) => x.start - y.start);
+  const counts = new Map<string, number>();
+  for (const it of items) counts.set(it.label, (counts.get(it.label) ?? 0) + 1);
+  const W = 1000, H = 40, x = (t: number) => (W * t) / Math.max(1, a.duration);
+  const bars = items.map((it) => `<rect x="${x(it.start)}" y="8" width="${Math.max(2, x(it.end) - x(it.start))}" height="24" fill="${EVENT_COLOR[it.label] ?? "#f1eee6"}" opacity=".85"><title>${esc(eventName(it.label))} ${it.start.toFixed(1)} to ${it.end.toFixed(1)} s</title></rect>`).join("");
+  const scope = r.mode === "junction"
+    ? "All the elimination rules ran: this is our junction's view, with its map of lanes, crossings and the signal."
+    : "A view that is not our junction: the rules that need no map ran (wrong way learned from the traffic itself, collisions in metres from the vehicle sizes), plus the red-light runs the audit found at each marked signal head.";
+  $("events").innerHTML = items.length
+    ? `<div class="ev-chips">${[...counts].map(([k, n]) => `<span class="ev-chip"><span class="swatch" style="background:${EVENT_COLOR[k] ?? "#f1eee6"}"></span>${esc(eventName(k))}<b>${n}</b></span>`).join("")}</div>
+       <svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Events along the clip"><rect x="0" y="8" width="${W}" height="24" fill="var(--asphalt-3)" />${bars}</svg>
+       <ul class="ev-list">${items.map((it, i) => `<li><button type="button" data-ev="${i}"><span class="mono">${fmt(it.start)} to ${fmt(it.end)} s</span><span><span class="swatch" style="background:${EVENT_COLOR[it.label] ?? "#f1eee6"}"></span>${esc(eventName(it.label))}</span><span class="note">${esc(it.note)}</span></button></li>`).join("")}</ul>
+       <p class="hint">${scope} Click an event to jump the video there.</p>`
+    : `<p class="hint">No events found. ${scope}</p>`;
+  for (const b of $("events").querySelectorAll<HTMLButtonElement>("[data-ev]"))
+    b.addEventListener("click", () => {
+      const v = $<HTMLVideoElement>("video");
+      v.currentTime = Math.max(0, items[Number(b.dataset.ev)].start - 1);
+      v.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+}
+
+/**
+ * Purdue coordination diagram (the ATSPM chart): one column per signal cycle, starting at the
+ * start of red; each vehicle is a dot at the second of its cycle it reached the stop line, green
+ * when the light was green. Dots above the green line arrived on green.
+ */
+function renderPcd(a: Audit): void {
+  const parts: string[] = [];
+  const W = 1000, rowH = 150, left = 120;
+  const usable = a.approaches.filter((ap) => ap.greens.length >= 2);
+  if (!usable.length) {
+    $("pcd").innerHTML = `<p class="hint">Needs at least two greens on one approach.</p>`;
+    return;
+  }
+  const H = usable.length * (rowH + 30) + 24;
+  const x = (t: number) => left + ((W - left - 10) * t) / Math.max(1, a.duration);
+  usable.forEach((ap, k) => {
+    const top = 10 + k * (rowH + 30);
+    // starts of red: the end of every green
+    const reds = ap.greens.map((g) => g.end).filter((t) => t < a.duration);
+    const cycleMax = Math.max(60, ...reds.slice(1).map((r0, i) => r0 - reds[i]));
+    const y = (s: number) => top + rowH - (rowH * Math.min(s, cycleMax)) / cycleMax;
+    parts.push(`<text x="0" y="${top + 14}">${esc(ap.name.slice(0, 14))}</text><text x="0" y="${top + 30}">${fmt(ap.arrivalsOnGreen * 100, 0)}% on green</text>`);
+    parts.push(`<line x1="${left}" x2="${W - 10}" y1="${top + rowH}" y2="${top + rowH}" stroke="var(--line-2)" />`);
+    for (let i = 0; i < reds.length; i++) {
+      const r0 = reds[i], r1 = reds[i + 1] ?? a.duration;
+      const g = ap.greens.find((gr) => gr.start >= r0 - 0.5 && gr.start < r1);
+      if (g) parts.push(`<line x1="${x(r0)}" x2="${x(r1)}" y1="${y(g.start - r0)}" y2="${y(g.start - r0)}" stroke="var(--sig-green)" stroke-width="2" />`);
+      parts.push(`<line x1="${x(r0)}" x2="${x(r0)}" y1="${top}" y2="${top + rowH}" stroke="var(--line)" />`);
+      for (const c of ap.crossings) {
+        if (c.arrival < r0 || c.arrival >= r1) continue;
+        const onGreen = g ? c.arrival >= g.start : false;
+        parts.push(`<circle cx="${x(r0) + ((x(r1) - x(r0)) * 0.5) + ((c.track % 7) - 3)}" cy="${y(c.arrival - r0)}" r="2.6" fill="${onGreen ? "var(--sig-green)" : "var(--sig-red)"}" />`);
+      }
+    }
+    parts.push(`<text x="${left - 6}" y="${top + 4}" text-anchor="end">${fmt(cycleMax, 0)} s</text><text x="${left - 6}" y="${top + rowH}" text-anchor="end">0</text>`);
+  });
+  $("pcd").innerHTML = `<div class="pcd-wrap"><svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Purdue coordination diagram per approach">${parts.join("")}</svg></div>
+    <p class="hint">The chart traffic engineers in the US read from controller logs (ATSPM); here it comes from the video. One column per cycle, from the start of red. Dots: vehicles reaching the stop line, at the second of the cycle they arrived; green when the light was green. Green line: when the green began. Dots below it waited at a red; coordination with the junction upstream moves them above it.</p>`;
 }

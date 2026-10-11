@@ -44,8 +44,15 @@ The video is never uploaded. No number plates or faces are read.
 | onnxruntime-web | npm | MIT |
 | ffmpeg.wasm | npm: `@ffmpeg/ffmpeg` (MIT), `@ffmpeg/core-mt` (GPL-2.0-or-later) | MIT, GPL-2.0-or-later |
 | Overpass and Barlow Condensed fonts | npm, Fontsource | OFL-1.1 |
+| Detector weights, light (`app/public/pipeline/model_n.onnx`, the default) | Ultralytics YOLO26n, pretrained on COCO, exported to ONNX at 544 x 960 | AGPL-3.0 |
+| Road graphs of Tashkent, Kwun Tong (Hong Kong) and Kennington (London) (`app/public/data/*_roads.json`) | OpenStreetMap via the Overpass API, fetched 11 October 2026 (`samples_src/make_roads*.py`) | ODbL 1.0, © OpenStreetMap contributors |
+| Basemap with buildings in 3D on `/network` and `/city` | OpenFreeMap tiles (OpenMapTiles schema, OpenStreetMap data), loaded by the page | OpenFreeMap terms; ODbL data |
+| Hong Kong traffic camera images and the counts made from them (`app/public/data/hongkong.json`, `app/public/media/hongkong/`) | Transport Department, Hong Kong SAR Government, traffic snapshot images, via DATA.GOV.HK; counted by YOLO26n in `samples_src/hongkong_detect.py`; the page also loads the live image | DATA.GOV.HK terms of use (attribution) |
+| Hong Kong car park vacancy (`app/public/data/hk_carparks.json`, live through `app/api/hkparking.js`) | Transport Department, car park information and vacancy for private cars, via DATA.GOV.HK | DATA.GOV.HK terms of use (attribution) |
+| London JamCam clips and counts (`app/public/data/london.json`, `app/public/media/london/`, live through `app/api/jamcam.js`) | Transport for London JamCams, "Powered by TfL Open Data" | TfL open data terms (based on the Open Government Licence) |
+| Published results on `/elsewhere` | The articles and reports linked on that page | Quoted with links |
 
-No other data is used. Because the weights are AGPL-3.0, the site source is AGPL-3.0 too (`app/package.json`).
+No other data is used. Drivers, their origins and departure times on `/city` are simulated (seeded) and marked as such; so is the traffic on `/network`. Because the weights are AGPL-3.0, the site source is AGPL-3.0 too (`app/package.json`).
 
 ## Reused from the elimination stage, and built for the final
 
@@ -61,6 +68,10 @@ Built during the final:
 * the audit core, `app/src/oqim/`: tracks and stop line crossings (`tracks.ts`), lights from a head or from the traffic (`phases.ts`), the point-queue replay and its controllers (`sim.ts`), the audit, the plans and the model check (`audit.ts`)
 * the audit page (`app/src/pages/audit.astro`)
 * the landing page and the Method page (`app/src/pages/index.astro`, `app/src/pages/method.astro`)
+* the 3D corridor (`app/src/oqim/corridor.ts`, `app/src/pages/network.astro`, `app/src/scripts/network.ts`): the audited vehicles drive up to five real junctions of Tashkent with the Intelligent Driver Model, timing now against a green wave
+* the district model (`app/src/oqim/allocate.ts`, `app/src/pages/city.astro`, `app/src/scripts/city.ts`, `app/api/`): Kwun Tong cameras and live car park vacancy, road load now and forecast, drivers sent to car parks with their own loads counted
+* the camera collectors and counters (`samples_src/hongkong_*.py`, `samples_src/london_*.py`)
+* the Elsewhere page (`app/src/pages/elsewhere.astro`)
 
 ## What is measured
 

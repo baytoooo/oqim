@@ -81,6 +81,10 @@ import { SAMPLES } from "../oqim/samples";
     <h3>Signal plans, replayed on this clip's own vehicles</h3>
     <div id="plans"></div>
     <p class="hint" id="check"></p>
+    <h3>Traffic events</h3>
+    <div class="panel panel-pad"><div id="events"></div></div>
+    <h3>Purdue coordination diagram</h3>
+    <div class="panel panel-pad"><div id="pcd"></div></div>
     <h3>Lights, crossings and queues</h3>
     <div class="panel panel-pad"><div id="timeline"></div></div>
     <h3>The video with what OQIM saw</h3>
@@ -181,5 +185,13 @@ import { SAMPLES } from "../oqim/samples";
   .bad { color: var(--sig-red); }
   .scroll-x { overflow-x: auto; }
   .tl-row text { fill: var(--muted); font: 12px var(--font-mono); }
+  .ev-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .ev-chip { background: var(--asphalt-3); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: .875rem; }
+  .ev-chip b { font-family: var(--font-mono); margin-left: 6px; }
+  .ev-list { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 6px; max-height: 260px; overflow: auto; }
+  .ev-list button { all: unset; cursor: pointer; display: grid; grid-template-columns: 110px 150px 1fr; gap: 10px; padding: 6px 8px; border-radius: var(--r-1); font-size: .875rem; width: 100%; box-sizing: border-box; }
+  .ev-list button:hover, .ev-list button:focus-visible { background: var(--asphalt-3); }
+  .ev-list .mono { color: var(--paint-2); }
+  .pcd-wrap svg text { fill: var(--muted); font: 11px var(--font-mono); }
   #report .hint { color: var(--muted); font-size: .875rem; margin: var(--sp-3) 0 0; max-width: 90ch; line-height: 1.5; }
 </style>
