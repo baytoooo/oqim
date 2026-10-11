@@ -40,7 +40,7 @@ interface Stat {
 }
 interface ParkingData {
   dataset: { name: string; licence: string; licenceUrl: string; source: string; official: string; citation: string };
-  rule: { conf: number; coverage: number; classes: number[]; grid: number; text: string };
+  rule: { conf: number; coverage: number; classes: number[]; grid: number; maxTileBox: number; text: string };
   eval: {
     detector: string;
     calibration: Stat;
@@ -162,14 +162,17 @@ async function detect(): Promise<void> {
   const t0 = performance.now();
   const found: Box[] = [];
   const crops = tiles(imgW, imgH, data.rule.grid);
-  for (const [x0, y0, x1, y1] of crops) {
+  for (const [k, [x0, y0, x1, y1]] of crops.entries()) {
     const w = x1 - x0, h = y1 - y0;
     const px = cx.getImageData(x0, y0, w, h).data;
     const lb = letterbox(px, w, h, 4, det.input);
     const out = await det.infer(lb);
     if (gen !== generation) return;
-    for (const b of parseOutput(out, lb, w, h, data.rule.conf, data.rule.classes, 1))
+    for (const b of parseOutput(out, lb, w, h, data.rule.conf, data.rule.classes, 1)) {
+      // a tile sees part of the car park: a box over a quarter of it is not one vehicle
+      if (k && (b.x2 - b.x1) * (b.y2 - b.y1) > data.rule.maxTileBox * w * h) continue;
       found.push({ ...b, x1: b.x1 + x0, x2: b.x2 + x0, y1: b.y1 + y0, y2: b.y2 + y0 });
+    }
   }
   const ms = performance.now() - t0;
   boxes = found;
@@ -180,7 +183,7 @@ async function detect(): Promise<void> {
 // ------------------------------------------------------------------ geometry
 
 /** The whole frame, then n x n tiles of 1.25 / n of each side, evenly spread (parking_eval.py tiles()).
- * A far car park's cars are 20 to 40 px wide; a tile gives the detector them larger. */
+ * A far car park's cars are 20 to 40 px wide; a tile shows them to the detector larger. */
 function tiles(w: number, h: number, n: number): [number, number, number, number][] {
   const out: [number, number, number, number][] = [[0, 0, w, h]];
   if (n > 1) {
@@ -344,6 +347,16 @@ function pressed(btn: HTMLElement | null): void {
   document.querySelectorAll<HTMLElement>("[data-pk-sample]").forEach((b) => b.setAttribute("aria-pressed", String(b === btn)));
 }
 
+/** The image at `url` once loaded (decode() can wait for a hidden tab to render), or null. */
+function loadImage(url: string): Promise<HTMLImageElement | null> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = url;
+  });
+}
+
 async function showSample(s: Sample, btn: HTMLElement): Promise<void> {
   pressed(btn);
   drawing = false;
@@ -352,9 +365,9 @@ async function showSample(s: Sample, btn: HTMLElement): Promise<void> {
   label = `PKLot ${s.camera}, ${s.weather}, ${s.time}`;
   spaces = s.spaces.map((x) => ({ ...x, poly: x.poly.map((p) => [p[0], p[1]] as Pt) }));
   status("Loading the image ...");
-  const img = new Image();
-  img.src = s.src;
-  await img.decode();
+  const img = await loadImage(s.src);
+  if (!img) return status("Could not load the image.");
+  if (!btn.matches('[aria-pressed="true"]')) return; // another frame was picked meanwhile
   setImage(img, s.w, s.h);
 }
 
@@ -367,9 +380,8 @@ async function showUpload(file: File): Promise<void> {
   spaces = [];
   const url = URL.createObjectURL(file);
   try {
-    const img = new Image();
-    img.src = url;
-    await img.decode();
+    const img = await loadImage(url);
+    if (!img) throw new Error("not an image");
     const k = Math.min(1, MAX_UPLOAD_W / img.naturalWidth);
     const w = Math.round(img.naturalWidth * k), h = Math.round(img.naturalHeight * k);
     const c = document.createElement("canvas");
@@ -424,7 +436,7 @@ function fillEval(d: ParkingData): void {
   $("pk-acc").textContent = pct(e.test.accuracy);
   $("pk-prec").textContent = pct(e.test.precision);
   $("pk-rec").textContent = pct(e.test.recall);
-  $("pk-cnt").textContent = String(e.free_count_error.median);
+  $("pk-cnt").textContent = String(e.free_count_error.mean);
   $("pk-n").textContent = `${e.test.spaces.toLocaleString("en-GB")} spaces in ${e.test.images} images`;
   $("pk-rule").textContent = d.rule.text;
   const rows = [row("All test images", e.test)];

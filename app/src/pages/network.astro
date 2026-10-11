@@ -33,13 +33,14 @@ import Base from "../layouts/Base.astro";
         </div>
         <div class="row" role="group" aria-label="Speed">
           <button class="btn ghost" type="button" id="play">Pause</button>
+          <label class="speed">Demand <select id="demand"><option value="1" selected>x1, as on the video</option><option value="1.5">x1.5</option><option value="2">x2, rush hour</option></select></label>
           <label class="speed">Speed <select id="speed"><option value="1">1x</option><option value="4" selected>4x</option><option value="10">10x</option></select></label>
           <button class="btn ghost" type="button" id="restart">Restart</button>
         </div>
         <div id="kpi"></div>
       </div>
     </div>
-    <p class="hint notes" id="notes">Simulation, not a measurement. The vehicles are the ones measured on the video (repeated to fill 10 minutes); they enter upstream so that, at free flow, they reach the middle junction when they reached the stop line on the video, and they follow the Intelligent Driver Model (Treiber et al. 2000) at up to 50 km/h. Timing now: every junction runs the cycle and green measured on the video; the real offsets between junctions are unknown, so each starts its cycle at a fixed pseudo-random time. OQIM: the same cycle and green, with offsets for a green wave at 45 km/h, so only the coordination changes and the cross streets keep their time. One direction only; cross streets are not simulated. Roads and junctions: OpenStreetMap contributors (ODbL 1.0). Map: OpenFreeMap, OpenMapTiles.</p>
+    <p class="hint notes" id="notes">Simulation, not a measurement. The vehicles are the ones measured on the video (repeated to fill 10 minutes); they enter upstream so that, at free flow, they reach the middle junction when they reached the stop line on the video, and they follow the Intelligent Driver Model (Treiber et al. 2000) at up to 50 km/h. Timing now: every junction runs the cycle and green measured on the video; the real offsets between junctions are unknown, so each starts its cycle at a fixed pseudo-random time. OQIM: the same cycle and green, with offsets for a green wave at 45 km/h, so only the coordination changes and the cross streets keep their time. One direction only; cross streets are not simulated. Vehicles are drawn 1.7 times their size so they can be seen from above; red ones are standing. Demand x1.5 and x2 add copies of the measured vehicles, as at a busier hour. Roads and junctions: OpenStreetMap contributors (ODbL 1.0). Map: OpenFreeMap, OpenMapTiles.</p>
   </section>
 </Base>
 

@@ -243,6 +243,8 @@ function box(c: [number, number], th: number, len: number, wid: number): [number
 }
 
 const WIDTH: Record<number, number> = { 2: 1.9, 3: 0.8, 5: 2.55, 7: 2.5 };
+/** Vehicles are drawn this many times their size so they can be seen from above; the model uses their real size. */
+const DRAW = 1.7;
 const HEIGHT: Record<number, number> = { 2: 1.5, 3: 1.3, 5: 3.2, 7: 3.0 };
 const COLOR: Record<number, string> = { 2: "#f1eee6", 3: "#ffa45b", 5: "#3fd27f", 7: "#5ab0ff" };
 
@@ -275,15 +277,20 @@ function demandFor(r: Route): Demand {
   const lead = r.stops[mid] / IDM.v0;
   const enter: number[] = [], cls: number[] = [];
   const period = Math.max(30, input.duration);
+  // demand scale: x1 is the video; more adds a copy of every vehicle (x2) or of every second one
+  // (x1.5) 1.3 s behind it, as at a busier hour
+  const scale = Number(($("demand") as HTMLSelectElement | null)?.value ?? 1);
   for (let k = 0; k * period < SIM_SECONDS; k++)
-    for (const a of input.arrivals) {
-      const t = a.t + k * period - lead + lead; // arrival at the middle junction, then back to the entry
-      const e = t - lead;
-      if (e + lead < SIM_SECONDS) {
-        enter.push(e);
-        cls.push(a.cls);
+    input.arrivals.forEach((a, n) => {
+      const copies = scale >= 2 ? 2 : scale > 1 && n % 2 === 0 ? 2 : 1;
+      for (let c = 0; c < copies; c++) {
+        const e = a.t + k * period - lead + c * 1.3; // at the entry, `lead` s before the middle junction
+        if (e + lead < SIM_SECONDS) {
+          enter.push(e);
+          cls.push(a.cls);
+        }
       }
-    }
+    });
   const shift = Math.max(0, -Math.min(...enter));
   const order = enter.map((_, i) => i).sort((x, y) => enter[x] - enter[y]);
   return { enter: order.map((i) => enter[i] + shift), cls: order.map((i) => cls[i]) };
@@ -318,7 +325,7 @@ function renderKpi(): void {
   const ch = (a: number, b: number) => (a > 0 ? `${b <= a ? "" : "+"}${(((b - a) / a) * 100).toFixed(0)}%` : "");
   const cls = (a: number, b: number) => (b < a * 0.98 ? "good" : b > a * 1.02 ? "bad" : "");
   $("kpi").innerHTML = `<table class="t"><thead><tr><th></th><th class="num">Timing now</th><th class="num">OQIM</th><th class="num">Change</th></tr></thead><tbody>
-    <tr><td>Vehicles through, ${SIM_SECONDS / 60} min</td><td class="num">${now.finished}</td><td class="num">${oq.finished}</td><td class="num"></td></tr>
+    <tr><td>Vehicles through, ${SIM_SECONDS / 60} min${Number($<HTMLSelectElement>("demand").value) > 1 ? ` (demand x${$<HTMLSelectElement>("demand").value})` : ""}</td><td class="num">${now.finished}</td><td class="num">${oq.finished}</td><td class="num"></td></tr>
     <tr><td>Mean time on the corridor, s</td><td class="num">${now.meanTravel.toFixed(0)}</td><td class="num">${oq.meanTravel.toFixed(0)}</td><td class="num ${cls(now.meanTravel, oq.meanTravel)}">${ch(now.meanTravel, oq.meanTravel)}</td></tr>
     <tr><td>Mean delay at the signals, s</td><td class="num">${now.meanDelay.toFixed(0)}</td><td class="num">${oq.meanDelay.toFixed(0)}</td><td class="num ${cls(now.meanDelay, oq.meanDelay)}">${ch(now.meanDelay, oq.meanDelay)}</td></tr>
     <tr><td>Stops per vehicle</td><td class="num">${now.meanStops.toFixed(2)}</td><td class="num">${oq.meanStops.toFixed(2)}</td><td class="num ${cls(now.meanStops, oq.meanStops)}">${ch(now.meanStops, oq.meanStops)}</td></tr>
@@ -353,7 +360,7 @@ function setRoute(): void {
     // close over the middle junction, looking down the corridor: the vehicles are a few metres long
     const th = bearing(route.coords[0], route.coords[route.coords.length - 1]);
     const mid = route.stops[Math.floor((route.stops.length - 1) / 2)];
-    map.flyTo({ center: along(route, mid - 60, 0).p, zoom: 17.2, pitch: 64, bearing: (th * 180) / Math.PI, duration: 1500 });
+    map.flyTo({ center: along(route, mid - 90, 0).p, zoom: 17.7, pitch: 62, bearing: (th * 180) / Math.PI, duration: 1500 });
   }
 }
 
@@ -363,16 +370,16 @@ function draw(): void {
   const sim = sims[0];
   const cars = sims.flatMap((lane, k) =>
     lane.cars.map((c) => {
-      const { p, th } = along(r, c.s - c.length / 2, 1.9 + 3.4 * k);
+      const { p, th } = along(r, c.s - c.length / 2, 2.2 + 3.9 * k);
       return {
         type: "Feature" as const,
-        properties: { h: HEIGHT[c.cls] ?? 1.5, color: c.stopped ? "#ff5b4c" : COLOR[c.cls] ?? "#f1eee6" },
-        geometry: { type: "Polygon" as const, coordinates: [box(p, th, LENGTH[c.cls] ?? 4.5, WIDTH[c.cls] ?? 1.9)] },
+        properties: { h: DRAW * (HEIGHT[c.cls] ?? 1.5), color: c.stopped ? "#ff5b4c" : COLOR[c.cls] ?? "#f1eee6" },
+        geometry: { type: "Polygon" as const, coordinates: [box(p, th, DRAW * (LENGTH[c.cls] ?? 4.5) * 0.9, DRAW * (WIDTH[c.cls] ?? 1.9))] },
       };
     }),
   );
   (map.getSource("cars") as GeoJSONSource).setData({ type: "FeatureCollection", features: cars });
-  const edge = 1.9 + 3.4 * (lanes - 1) + 2.5;
+  const edge = 2.2 + 3.9 * (lanes - 1) + 3;
   const sigs = sim.signals.map((sg) => {
     const { p, th } = along(r, sg.at, edge + 1);
     const light = lightAt(sg, sim.t);
@@ -387,6 +394,13 @@ function draw(): void {
     return { type: "Feature" as const, properties: { color: lightAt(sg, sim.t) === "green" ? "#3fd27f" : "#ff5b4c" }, geometry: { type: "LineString" as const, coordinates: [a, b] } };
   });
   (map.getSource("signals") as GeoJSONSource).setData({ type: "FeatureCollection", features: sigs });
+  // vehicles standing within 200 m before each signal
+  const queues = sim.signals.map((sg, i) => {
+    const prev = i > 0 ? sim.signals[i - 1].at : -Infinity;
+    const n = sims.reduce((acc, l) => acc + l.cars.filter((c) => c.stopped && c.s <= sg.at + 1 && c.s > Math.max(prev, sg.at - 200)).length, 0);
+    return { type: "Feature" as const, properties: { label: n ? `${n} waiting` : "" }, geometry: { type: "Point" as const, coordinates: along(r, sg.at - 25, edge + 10).p } };
+  });
+  (map.getSource("queues") as GeoJSONSource).setData({ type: "FeatureCollection", features: queues });
   (map.getSource("stoplines") as GeoJSONSource).setData({ type: "FeatureCollection", features: lines });
   const m = Math.floor(sim.t / 60), s = Math.floor(sim.t % 60);
   $("clock").textContent = `${m}:${String(s).padStart(2, "0")}`;
@@ -505,13 +519,14 @@ async function main(): Promise<void> {
     type: "geojson",
     data: { type: "FeatureCollection", features: roads.junctions.map((j, i) => ({ type: "Feature", properties: { i, name: j.name }, geometry: { type: "Point", coordinates: [j.lon, j.lat] } })) },
   });
-  for (const id of ["route", "cars", "signals", "stoplines", "picked"]) map.addSource(id, { type: "geojson", data: empty });
+  for (const id of ["route", "cars", "signals", "stoplines", "picked", "queues"]) map.addSource(id, { type: "geojson", data: empty });
   map.addLayer({ id: "route", type: "line", source: "route", paint: { "line-color": "#f3c316", "line-width": 6, "line-opacity": 0.55 } });
   map.addLayer({ id: "stoplines", type: "line", source: "stoplines", paint: { "line-color": ["get", "color"], "line-width": 4 } });
   map.addLayer({ id: "junctions", type: "circle", source: "junctions", paint: { "circle-radius": 6, "circle-color": "#ff5b4c", "circle-stroke-color": "#111214", "circle-stroke-width": 2 } });
   map.addLayer({ id: "picked", type: "circle", source: "picked", paint: { "circle-radius": 11, "circle-color": "#f3c316", "circle-stroke-color": "#111214", "circle-stroke-width": 2 } });
   map.addLayer({ id: "picked-n", type: "symbol", source: "picked", layout: { "text-field": ["get", "n"], "text-size": 13, "text-font": ["Noto Sans Bold"] }, paint: { "text-color": "#111214" } });
   map.addLayer({ id: "cars", type: "fill-extrusion", source: "cars", paint: { "fill-extrusion-color": ["get", "color"], "fill-extrusion-height": ["get", "h"], "fill-extrusion-base": 0.2, "fill-extrusion-opacity": 0.95 } });
+  map.addLayer({ id: "queues", type: "symbol", source: "queues", layout: { "text-field": ["get", "label"], "text-size": 15, "text-font": ["Noto Sans Bold"], "text-allow-overlap": true }, paint: { "text-color": "#ff5b4c", "text-halo-color": "#111214", "text-halo-width": 2 } });
   map.addLayer({ id: "signals", type: "fill-extrusion", source: "signals", paint: { "fill-extrusion-color": ["get", "color"], "fill-extrusion-height": ["get", "h"], "fill-extrusion-base": 4.5 } });
 
   map.on("click", "junctions", (e) => {
@@ -548,6 +563,10 @@ async function main(): Promise<void> {
     $("play").textContent = playing ? "Pause" : "Play";
   });
   $("restart").addEventListener("click", restart);
+  $("demand").addEventListener("change", () => {
+    restart();
+    renderKpi();
+  });
 
   renderPicked();
   renderKpi();

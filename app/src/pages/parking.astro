@@ -69,17 +69,18 @@ import Base from "../layouts/Base.astro";
       <div class="stat"><div class="v" id="pk-acc">...</div><div class="l">spaces called right</div></div>
       <div class="stat"><div class="v" id="pk-prec">...</div><div class="l">of spaces called taken, really taken (precision)</div></div>
       <div class="stat"><div class="v" id="pk-rec">...</div><div class="l">of taken spaces, found (recall)</div></div>
-      <div class="stat"><div class="v" id="pk-cnt">...</div><div class="l">median error in the free count of an image, spaces</div></div>
+      <div class="stat"><div class="v" id="pk-cnt">...</div><div class="l">mean error in an image's free count, spaces</div></div>
     </div>
     <p class="hint">Measured offline on <span id="pk-n"></span> of PKLot that were not used to choose the rule (samples_src/parking_eval.py), with the same model and rule as this page: <span id="pk-rule"></span>. Ground truth is the dataset's hand labels.</p>
     <div class="panel scroll-x tbl">
       <table class="t">
-        <thead><tr><th>Images</th><th class="num">Images</th><th class="num">Spaces</th><th class="num">Accuracy</th><th class="num">Precision</th><th class="num">Recall</th><th class="num">TP / FP / FN / TN</th></tr></thead>
+        <thead><tr><th>Set</th><th class="num">Images</th><th class="num">Spaces</th><th class="num">Accuracy</th><th class="num">Precision</th><th class="num">Recall</th><th class="num">TP / FP / FN / TN</th></tr></thead>
         <tbody id="pk-table"></tbody>
       </table>
     </div>
     <p class="hint" id="pk-count-err"></p>
-    <p class="hint">"Taken" is the positive class. Most errors are taken spaces it calls free: cars far from the camera, small and partly hidden behind others, are missed. A car park that publishes this count should place its camera so that every space is in clear view, as UFPR04 and UFPR05 are.</p>
+    <p class="hint">"Taken" is the positive class. Most errors are taken spaces called free: on the PUCPR camera, cars at the far end are 20 to 40 pixels wide and partly hidden by the row in front. That is why the detector also runs on tiles: on the whole frame alone (an earlier run with the yolo26n.pt weights, rule chosen the same way) it found 46% of taken spaces, for 74% accuracy. Where the camera sees every space clearly, as UFPR04 and UFPR05 do, more than 99% of spaces are right.</p>
+    <p class="hint">This page runs the browser export of the model (model_n.onnx, the file the audit uses), and the numbers above were measured with that same file. On the 12 sample frames the count in this browser and the offline count differ by at most 2 spaces per frame (JPEG recompression and resizing).</p>
     <p class="hint">Dataset: PKLot, P. R. L. de Almeida, L. S. Oliveira, A. S. Britto Jr., E. J. Silva Jr., A. L. Koerich, "PKLot: A robust dataset for parking lot classification", Expert Systems with Applications 42 (11), 2015. Licence <a href="https://creativecommons.org/licenses/by/4.0/" rel="noopener">CC BY 4.0</a>. Frames and labels taken from the <a href="https://huggingface.co/datasets/Voxel51/PKLot" rel="noopener">Voxel51 copy on Hugging Face</a> of the <a href="https://web.inf.ufpr.br/vri/databases/parking-lot-database/" rel="noopener">official release</a>; the sample frames here are recompressed.</p>
   </section>
 </Base>

@@ -11,6 +11,7 @@ export const NAV_LINKS: NavLink[] = [
   { href: "/method", key: "method", label: "Method" },
   { href: "/network", key: "network", label: "3D corridor" },
   { href: "/city", key: "city", label: "District" },
+  { href: "/parking", key: "parking", label: "Parking" },
   { href: "/elsewhere", key: "elsewhere", label: "Elsewhere" },
   { href: "/team", key: "team", label: "Team" },
   { href: "/audit", key: "audit", label: "Run an audit", cls: "nav-demo" },
