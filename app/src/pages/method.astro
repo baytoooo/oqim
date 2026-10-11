@@ -5,18 +5,46 @@ import SecHead from "../components/SecHead.astro";
 import SectionIndex from "../components/SectionIndex.astro";
 import { ELIMINATION_URL } from "../config";
 import { f, loadAudits, mmss, modeOf, weakCheck } from "../lib/audits";
+import fs from "node:fs";
+import path from "node:path";
+
+const readData = (file: string) => JSON.parse(fs.readFileSync(path.join(process.cwd(), "public", "data", file), "utf8"));
+const tracker = readData("tracker.json");
+const parking = readData("parking.json");
+const te = tracker.eval;
+const pt = parking.eval.test;
+const sg = parking.eval.suggest;
+const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
+const pc = (v: number) => `${(v * 100).toFixed(1)}%`;
+const parkSteps = [
+  { k: "Frames", d: `One still frame from a camera that already watches the car park, every 5 minutes. The tracker replays ${tracker.lots.length} PKLot cameras (${tracker.lots.map((l: { name: string; date: string }) => `${l.name}, ${l.date}`).join("; ")}), ${te.frames} frames in all.` },
+  { k: "Vehicles", d: "YOLO26m (on the tracker frames) or YOLO26n, 10 MB (in the browser on /parking) finds cars, buses and trucks on the whole frame and on 3 x 3 overlapping tiles at 960 px, so small cars at the back are seen larger. For the far rows of a camera, a second pass on 5 x 5 tiles over the top 60% of the frame, each enlarged about 3 times; a box cut by a tile edge is dropped." },
+  { k: "Free or taken", d: `${cap(parking.rule.text)}. A space changes state only when two frames in a row agree, so one wrong frame does not make a car come in and leave.` },
+  { k: "The whole car park", d: `The dataset labels only part of each car park. The rest is found from the frames: ${te.whole.text}. That adds ${te.whole.extra} spaces to the ${te.whole.labelled} labelled ones; on the labelled part the same method finds ${te.whole.labelledFound} of the ${te.whole.labelledUsed} spaces that cars used. A space nobody parked in that morning is not found.` },
+  { k: "One photo, no marking", d: sg ? `For your own photo on /parking: ${sg.rule}. On ${sg.images} PKLot images against the hand labels: ${Math.round(sg.takenFound * 100)}% of the taken spaces are found, and ${Math.round(sg.suggestedRight * 100)}% of the suggested free spaces are free. A free space with no car on either side (an empty row, the end of a row) cannot be seen in one photo; you click it in, and click a wrong one away.` : "" },
+  { k: "In and out", d: `A space that turns taken is a car that came in; one that turns free, a car that left. Over the three mornings: ${te.events.in} in and ${te.events.out} out on the labelled spaces.` },
+  { k: "Forecast", d: `${cap(te.forecastText)}. ${te.forecast.h} minutes ahead it is off by ${te.forecast.mae.toFixed(1)} spaces on average, against ${te.forecast.naiveMae.toFixed(1)} for "as many as now", over ${te.forecast.n} forecasts.` },
+  { k: "Advice", d: "For each car park: free spaces expected when you get there, the chance of at least one (a normal error with the forecast's measured spread at that horizon), and the expected minutes to the door: drive + walk + 8 minutes of street search times the chance it is full. Many drivers asking at once are placed one by one, each counting the drivers already sent; a navigator sends them all to the nearest. Code: src/oqim/tracker.ts and src/oqim/spaces.ts, with tests." },
+];
+const parkChecks = [
+  [pc(te.accuracy), `of ${te.spaces.toLocaleString("en")} space readings right on the tracker frames (labelled spaces, YOLO26m)`],
+  [pc(pt.accuracy), `of ${pt.spaces.toLocaleString("en")} spaces right on ${pt.images} held-out PKLot images in the browser (YOLO26n)`],
+  [`${te.freeErr.median} / ${te.freeErr.p90}`, "free count off by, median / 90th percentile, spaces per frame"],
+  [`${te.forecast.mae.toFixed(1)} vs ${te.forecast.naiveMae.toFixed(1)}`, `forecast error ${te.forecast.h} minutes ahead, in spaces, against "as many as now"`],
+];
 
 const { source, clips } = loadAudits();
 const websterWorse = clips.filter((c) => (modeOf(c, "webster")?.meanDelay ?? 0) > (modeOf(c, "measured")?.meanDelay ?? Infinity)).length;
 
 const index = [
-  { id: "architecture", n: "01", t: "Architecture" },
-  { id: "measures", n: "02", t: "Measures" },
-  { id: "replay", n: "03", t: "Replay and plans" },
-  { id: "check", n: "04", t: "Model check" },
-  { id: "fails", n: "05", t: "Where it fails" },
-  { id: "privacy", n: "06", t: "Privacy, speed, cost" },
-  { id: "licences", n: "07", t: "Licences" },
+  { id: "parking", n: "01", t: "Parking tracker" },
+  { id: "architecture", n: "02", t: "Signal audit: architecture" },
+  { id: "measures", n: "03", t: "Measures" },
+  { id: "replay", n: "04", t: "Replay and plans" },
+  { id: "check", n: "05", t: "Model check" },
+  { id: "fails", n: "06", t: "Where it fails" },
+  { id: "privacy", n: "07", t: "Privacy, speed, cost" },
+  { id: "licences", n: "08", t: "Licences" },
 ];
 
 const flow = [
@@ -76,17 +104,43 @@ const licences = [
   { k: "ONNX Runtime Web", l: "MIT", n: "Runs the detector in the browser." },
   { k: "ffmpeg.wasm", l: "MIT (@ffmpeg/ffmpeg), GPL-2.0-or-later (@ffmpeg/core-mt)", n: "Converts clips the browser cannot play." },
   { k: "Overpass and Barlow Condensed fonts", l: "OFL-1.1", n: "" },
+  { k: "PKLot (Almeida et al., 2015), frames and hand labels of the parking tracker and /parking", l: "CC BY 4.0", n: "Via the Voxel51/PKLot copy on Hugging Face." },
+  { k: "YOLO26m and YOLO26n weights (Ultralytics), for the parking counts", l: "AGPL-3.0", n: "" },
   { k: "Sample clips", l: "No licence stated", n: "The organisers' footage of one Tashkent junction, given for the elimination task. Used here as samples only." },
 ];
 ---
-<Base title="Method" description="How OQIM audits a signalised junction from one video: the browser detector and tracker, the measures, the replay model and its check, the plans it compares, and where it fails." active="method">
-  <PageHead kicker="Method" title="How OQIM audits a junction" wide>
-    <p class="lede">What runs where, every measure and the formula behind it, the replay that checks itself against the video, and the cases where it goes wrong.</p>
+<Base title="Method" description="How OQIM works: the parking tracker (free spaces from car park cameras, the whole car park, spaces suggested from one photo, the forecast and the advice), then the signal audit, its measures, replay and check." active="method">
+  <PageHead kicker="Method" title="How OQIM works" wide>
+    <p class="lede">First the parking tracker: how a camera frame becomes free spaces, a forecast and advice, and how well each step is measured. Then the next stage, the signal audit from one video of a junction.</p>
   </PageHead>
   <SectionIndex items={index} />
 
+  <section class="section wrap" id="parking">
+    <SecHead num="01" title="Parking tracker">
+      <p>From a camera frame to "drive to this car park". The detector runs on still frames, so one frame a minute or every 5 minutes is enough; no video is stored and no plates or faces are read.</p>
+    </SecHead>
+    <dl class="defs" data-reveal>
+      {parkSteps.filter((m) => m.d).map((m) => (
+        <div class="def">
+          <dt>{m.k}</dt>
+          <dd>{m.d}</dd>
+        </div>
+      ))}
+    </dl>
+    <div class="table-scroll cards-sm mods" data-reveal>
+      <table>
+        <thead><tr><th scope="col">Measured</th><th scope="col">What</th></tr></thead>
+        <tbody>
+          {parkChecks.map(([v, d]) => (
+            <tr><th scope="row"><code>{v}</code></th><td class="wide-sm">{d}</td></tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
   <section class="section wrap" id="architecture">
-    <SecHead num="01" title="Architecture">
+    <SecHead num="02" title="Signal audit (next stage): architecture">
       <p>Everything runs in the browser tab. There is no server step: the site is static files, and the model is one of them.</p>
     </SecHead>
     <ol class="flow" role="list" data-reveal>
@@ -112,7 +166,7 @@ const licences = [
   </section>
 
   <section class="section wrap" id="measures">
-    <SecHead num="02" title="What is measured, and how">
+    <SecHead num="03" title="What is measured, and how">
       <p>The constants below are the ones in <code>src/oqim/</code>. Distances are in work pixels (the frame at 1920 px wide), times in seconds of video.</p>
     </SecHead>
     <dl class="defs" data-reveal>
@@ -126,7 +180,7 @@ const licences = [
   </section>
 
   <section class="section wrap" id="replay">
-    <SecHead num="03" title="The replay, and the plans it compares">
+    <SecHead num="04" title="The replay, and the plans it compares">
       <p>Each approach is a queue at its stop line (a point queue), stepped every 0.1 s. A vehicle joins it at its measured arrival time. On green it leaves: the first of a standing queue one start-up time after the green begins, the rest one headway apart. An approach earns one departure per headway and may save up to BURST = 3, so the lanes of a wide approach can leave side by side.</p>
       <p>Every plan runs the measured lights until the clip's first green, so all plans start from the same queues. Mean delay is the total waiting time over the vehicles; a vehicle still waiting when the clip ends counts until the end.</p>
     </SecHead>
@@ -145,7 +199,7 @@ const licences = [
   </section>
 
   <section class="section wrap" id="check">
-    <SecHead num="04" title="The model check">
+    <SecHead num="05" title="The model check">
       <p>Before the replay may judge a plan, it runs under the measured lights and must give back the crossings on the video. For every vehicle that is not censored, the error is the gap between its departure in the model and its crossing on the video; the table shows the median of that gap over the vehicles checked. It also compares the mean wait in the model with the wait measured on the video.</p>
       <p class="src"><span class="src-k">Source</span> {source}.</p>
     </SecHead>
@@ -219,7 +273,7 @@ const licences = [
   </section>
 
   <section class="section wrap" id="fails">
-    <SecHead num="05" title="Where it fails">
+    <SecHead num="06" title="Where it fails">
       <p>Known limits, from our own runs on the sample junction. Some also show up as warnings in the audit, such as a clip with fewer than two cycles.</p>
     </SecHead>
     <ul class="fails" role="list">
@@ -233,7 +287,7 @@ const licences = [
   </section>
 
   <section class="section wrap" id="privacy">
-    <SecHead num="06" title="Privacy, speed and cost" />
+    <SecHead num="07" title="Privacy, speed and cost" />
     <div class="three">
       <div class="plate" data-reveal>
         <span class="pk">Privacy</span>
@@ -251,7 +305,7 @@ const licences = [
   </section>
 
   <section class="section wrap" id="licences">
-    <SecHead num="07" title="Licences">
+    <SecHead num="08" title="Licences">
       <p>The browser detector, the tracker port, the worker and the video conversion come from our <a href={ELIMINATION_URL} rel="noopener" target="_blank">elimination-stage system</a>, as the README declares.</p>
     </SecHead>
     <div class="table-scroll cards-sm" data-reveal>

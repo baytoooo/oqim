@@ -9,6 +9,7 @@ import cpuWasm from "onnxruntime-web/ort-wasm-simd-threaded.wasm?url";
 import { ASSET_CDN } from "../config";
 import { OnnxDetector, letterbox, parseOutput, type OrtModule } from "../pipeline/detector";
 import type { Scene } from "../pipeline/scene";
+import { suggest } from "../oqim/spaces";
 
 type Pt = [number, number];
 interface Space {
@@ -16,6 +17,8 @@ interface Space {
   poly: Pt[];
   /** Hand label (samples only). */
   occupied?: boolean;
+  /** Suggested from the photo: a car seen there, or a gap in a row of cars. */
+  auto?: "car" | "gap";
 }
 interface Sample {
   id: string;
@@ -42,6 +45,7 @@ interface ParkingData {
   dataset: { name: string; licence: string; licenceUrl: string; source: string; official: string; citation: string };
   rule: { conf: number; coverage: number; classes: number[]; grid: number; maxTileBox: number; text: string };
   eval: {
+    suggest?: { images: number; takenFound: number; freeFound: number; suggestedRight: number };
     detector: string;
     calibration: Stat;
     test: Stat;
@@ -87,6 +91,8 @@ let spaces: Space[] = [];
 let pending: Pt[] = [];
 let boxes: Box[] | null = null;
 let drawing = false;
+/** An uploaded photo: look closer at the far rows and suggest the spaces. */
+let upload = false;
 /** Bumped on every new image, so a slow detection of an old one is dropped. */
 let generation = 0;
 
@@ -174,11 +180,47 @@ async function detect(): Promise<void> {
       found.push({ ...b, x1: b.x1 + x0, x2: b.x2 + x0, y1: b.y1 + y0, y2: b.y2 + y0 });
     }
   }
+  let runs = crops.length;
+  if (upload) {
+    // far rows: cars of 30 to 40 px; 5 x 5 tiles over the top 60% of the photo, each enlarged
+    const fine = tiles(imgW, imgH, 5).slice(1).filter(([, y0]) => y0 < 0.6 * imgH);
+    for (const [k, [x0, y0, x1, y1]] of fine.entries()) {
+      status(`Looking closer at the far rows: tile ${k + 1} of ${fine.length} ...`);
+      const w = x1 - x0, h = y1 - y0;
+      const lb = letterbox(cx.getImageData(x0, y0, w, h).data, w, h, 4, det.input);
+      const out = await det.infer(lb);
+      if (gen !== generation) return;
+      for (const b of parseOutput(out, lb, w, h, data.rule.conf, data.rule.classes, 1)) {
+        if ((b.x2 - b.x1) * (b.y2 - b.y1) > data.rule.maxTileBox * w * h) continue;
+        // a box cut by the tile edge is half a car
+        if ((b.x1 < 2 && x0 > 0) || (b.y1 < 2 && y0 > 0) || (b.x2 > w - 2 && x1 < imgW) || (b.y2 > h - 2 && y1 < imgH)) continue;
+        found.push({ ...b, x1: b.x1 + x0, x2: b.x2 + x0, y1: b.y1 + y0, y2: b.y2 + y0 });
+      }
+    }
+    runs += fine.length;
+  }
   const ms = performance.now() - t0;
   boxes = found;
-  status(`${crops.length} detector runs (the whole frame and ${crops.length - 1} tiles) in ${(ms / 1000).toFixed(1)} s, on this device (WebAssembly). Nothing was uploaded.`);
+  status(`${runs} detector runs (the whole frame and ${runs - 1} tiles) in ${(ms / 1000).toFixed(1)} s, on this device (WebAssembly). Nothing was uploaded.`);
+  if (upload && !spaces.length) autoSpaces();
   render();
 }
+
+/** Spaces from the photo alone: the cars, and the gaps in rows of cars that fit one. */
+function autoSpaces(): void {
+  if (!boxes) return;
+  const s = suggest(boxes, imgW, imgH);
+  const poly = (b: { x1: number; y1: number; x2: number; y2: number }): Pt[] => {
+    const dx = (b.x2 - b.x1) * 0.06, dy = (b.y2 - b.y1) * 0.06;
+    return [[b.x1 + dx, b.y1 + dy], [b.x2 - dx, b.y1 + dy], [b.x2 - dx, b.y2 - dy], [b.x1 + dx, b.y2 - dy]];
+  };
+  spaces = [
+    ...s.taken.map((b, i) => ({ id: `car${i}`, poly: poly(b), auto: "car" as const })),
+    ...s.free.map((b, i) => ({ id: `gap${i}`, poly: poly(b), auto: "gap" as const })),
+  ];
+  suggested = { cars: s.taken.length, gaps: s.free.length, rows: s.rows };
+}
+let suggested: { cars: number; gaps: number; rows: number } | null = null;
 
 // ------------------------------------------------------------------ geometry
 
@@ -231,6 +273,13 @@ function clip(P: Pt[], b: Box): Pt[] {
   return P;
 }
 
+function inPoly(p: Pt, P: Pt[]): boolean {
+  let c = false;
+  for (let i = 0, j = P.length - 1; i < P.length; j = i++)
+    if (P[i][1] > p[1] !== P[j][1] > p[1] && p[0] < ((P[j][0] - P[i][0]) * (p[1] - P[i][1])) / (P[j][1] - P[i][1]) + P[i][0]) c = !c;
+  return c;
+}
+
 function coverage(poly: Pt[], bs: Box[]): number {
   const a = area(poly);
   if (a <= 0) return 0;
@@ -276,8 +325,9 @@ function render(): void {
     ctx.fill();
     ctx.lineWidth = lw;
     ctx.strokeStyle = `rgb(${col})`;
-    ctx.setLineDash([]);
+    ctx.setLineDash(s.auto === "gap" ? [lw * 3, lw * 2] : []);
     ctx.stroke();
+    ctx.setLineDash([]);
     if (t !== null && s.occupied !== undefined && s.occupied !== t) {
       // the hand label says otherwise
       ctx.lineWidth = lw * 1.6;
@@ -316,7 +366,11 @@ function render(): void {
     freeEl.textContent = String(free);
     freeOf.textContent = `of ${M} free`;
   }
-  agreeEl.textContent = labelled
+  const sg = data?.eval.suggest;
+  agreeEl.textContent = suggested && spaces.some((x) => x.auto)
+    ? `Suggested from the photo: ${suggested.cars} vehicles (taken spaces) and ${suggested.gaps} gaps in rows of cars that fit a car (dashed; free unless a vehicle covers it). Click a space to remove it, or click 4 corners to add one.` +
+      (sg ? ` Checked on ${sg.images} PKLot images against the hand labels: ${Math.round(sg.takenFound * 100)}% of the taken spaces are found, and ${Math.round(sg.suggestedRight * 100)}% of the suggested free spaces are free. A free space with no car on either side (an empty row) cannot be seen in one photo; draw it.` : "")
+    : labelled
     ? `The hand labels of this frame: ${spaces.filter((s) => s.occupied === false).length} free. The detector agrees with them on ${agree} of ${labelled} spaces; dashed amber outlines mark the others.`
     : drawing
       ? "Your photo has no hand labels, so there is nothing to check the count against."
@@ -337,6 +391,7 @@ function setImage(img: HTMLImageElement | HTMLCanvasElement, w: number, h: numbe
   imgH = canvas.height = h;
   boxes = null;
   pending = [];
+  suggested = null;
   render();
   void detect();
 }
@@ -360,6 +415,7 @@ function loadImage(url: string): Promise<HTMLImageElement | null> {
 async function showSample(s: Sample, btn: HTMLElement): Promise<void> {
   pressed(btn);
   drawing = false;
+  upload = false;
   drawTools.hidden = true;
   canvas.classList.remove("drawing");
   label = `PKLot ${s.camera}, ${s.weather}, ${s.time}`;
@@ -374,6 +430,7 @@ async function showSample(s: Sample, btn: HTMLElement): Promise<void> {
 async function showUpload(file: File): Promise<void> {
   pressed(null);
   drawing = true;
+  upload = true;
   drawTools.hidden = false;
   canvas.classList.add("drawing");
   label = file.name.replace(/\.[^.]+$/, "") || "your car park";
@@ -399,7 +456,16 @@ async function showUpload(file: File): Promise<void> {
 canvas.addEventListener("click", (ev) => {
   if (!drawing || !image) return;
   const r = canvas.getBoundingClientRect();
-  pending.push([((ev.clientX - r.left) / r.width) * imgW, ((ev.clientY - r.top) / r.height) * imgH]);
+  const p: Pt = [((ev.clientX - r.left) / r.width) * imgW, ((ev.clientY - r.top) / r.height) * imgH];
+  if (!pending.length) {
+    const hit = spaces.findIndex((x) => inPoly(p, x.poly));
+    if (hit >= 0) {
+      spaces.splice(hit, 1);
+      render();
+      return;
+    }
+  }
+  pending.push(p);
   if (pending.length === 4) {
     spaces.push({ id: spaces.length + 1, poly: pending });
     pending = [];
@@ -415,9 +481,18 @@ $("pk-undo").addEventListener("click", () => {
 $("pk-clear").addEventListener("click", () => {
   pending = [];
   spaces = [];
+  suggested = null;
   render();
 });
 boxesToggle.addEventListener("change", render);
+$("pk-auto").addEventListener("click", () => {
+  if (!boxes) return status("Wait for the detector to finish.");
+  drawing = true;
+  drawTools.hidden = false;
+  canvas.classList.add("drawing");
+  autoSpaces();
+  render();
+});
 $<HTMLInputElement>("pk-file").addEventListener("change", (ev) => {
   const f = (ev.target as HTMLInputElement).files?.[0];
   if (f) void showUpload(f);

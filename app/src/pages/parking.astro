@@ -20,7 +20,7 @@ import Base from "../layouts/Base.astro";
           <input type="file" id="pk-file" accept="image/*" />
           Choose a photo
         </label>
-        <p class="hint">Then mark each space with 4 clicks, one on each corner.</p>
+        <p class="hint">OQIM suggests the spaces itself: every car it finds is a taken space, and every gap in a row of cars that fits a car is a free one. Click a space to remove it, or click 4 corners to add one.</p>
       </div>
     </div>
 
@@ -29,9 +29,10 @@ import Base from "../layouts/Base.astro";
       <div class="side">
         <div class="panel panel-pad raised edge">
           <p class="count"><span id="pk-free" class="v">...</span> <span id="pk-free-of" class="l"></span></p>
-          <p class="legend"><i class="sw free"></i> free <i class="sw taken"></i> taken <i class="sw miss"></i> differs from the hand label</p>
+          <p class="legend"><i class="sw free"></i> free <i class="sw taken"></i> taken <i class="sw miss"></i> differs from the hand label <i class="sw gap"></i> suggested free space</p>
           <p class="hint" id="pk-agree"></p>
           <label class="hint chk"><input type="checkbox" id="pk-boxes" /> Show the vehicle boxes</label>
+          <p class="tools"><button class="btn ghost small" type="button" id="pk-auto">Suggest spaces from the photo (no hand labels)</button></p>
           <div class="tools" id="pk-draw-tools" hidden>
             <button class="btn ghost small" type="button" id="pk-undo">Undo</button>
             <button class="btn ghost small" type="button" id="pk-clear">Clear spaces</button>
@@ -117,6 +118,7 @@ import Base from "../layouts/Base.astro";
   .sw.free { background: var(--sig-green); }
   .sw.taken { background: var(--sig-red); }
   .sw.miss { border: 2px dashed var(--sig-amber); }
+  .sw.gap { border: 2px dashed #3fd27f; }
   .chk { display: flex; gap: var(--sp-2); align-items: center; cursor: pointer; }
   .tools { display: flex; gap: var(--sp-2); flex-wrap: wrap; margin-top: var(--sp-3); }
   .status { color: var(--paint-2); font-size: .8125rem; min-height: 1.5em; margin-top: var(--sp-3); }
