@@ -244,7 +244,7 @@ function box(c: [number, number], th: number, len: number, wid: number): [number
 
 const WIDTH: Record<number, number> = { 2: 1.9, 3: 0.8, 5: 2.55, 7: 2.5 };
 /** Vehicles are drawn this many times their size so they can be seen from above; the model uses their real size. */
-const DRAW = 1.7;
+const DRAW = 2.4;
 const HEIGHT: Record<number, number> = { 2: 1.5, 3: 1.3, 5: 3.2, 7: 3.0 };
 const COLOR: Record<number, string> = { 2: "#f1eee6", 3: "#ffa45b", 5: "#3fd27f", 7: "#5ab0ff" };
 
@@ -360,7 +360,7 @@ function setRoute(): void {
     // close over the middle junction, looking down the corridor: the vehicles are a few metres long
     const th = bearing(route.coords[0], route.coords[route.coords.length - 1]);
     const mid = route.stops[Math.floor((route.stops.length - 1) / 2)];
-    map.flyTo({ center: along(route, mid - 90, 0).p, zoom: 17.7, pitch: 62, bearing: (th * 180) / Math.PI, duration: 1500 });
+    map.flyTo({ center: along(route, mid, 0).p, zoom: 16.9, pitch: 58, bearing: (th * 180) / Math.PI, duration: 1500 });
   }
 }
 
