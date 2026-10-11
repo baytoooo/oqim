@@ -33,18 +33,35 @@ const parkChecks = [
   [`${te.forecast.mae.toFixed(1)} vs ${te.forecast.naiveMae.toFixed(1)}`, `forecast error ${te.forecast.h} minutes ahead, in spaces, against "as many as now"`],
 ];
 
+const banner = readData("banner.json");
+const bnMin = (sec: number) => `${Math.floor(sec / 60)} min ${sec % 60} s`;
+const bannerSteps = [
+  { k: "Video", d: "A video from a camera that already looks at the road by the billboard: your own file, or one of the sample clips. It is analysed in the browser tab and never uploaded." },
+  { k: "Line", d: "You draw one line across the road on the first frame, where the vehicles pass the billboard." },
+  { k: "Detect and track", d: "YOLO26s exported to ONNX (960 x 544 input), at 5 frames a second, in ONNX Runtime Web on WebGPU or WebAssembly, then ByteTrack. The same detector and tracker as the signal audit." },
+  { k: "Count", d: "A car, bus, truck or motorcycle tracked in at least 3 analysed frames is counted once, when its point (the bottom centre of its box raised by 15% of its height) first crosses the line, up to 4% past its ends. It is counted by type and by the side of the line it moved to. The count is shown per minute of video, and as vehicles an hour at the rate of that video." },
+  { k: "Check by eye", d: "The video plays with each counted vehicle turning green as it crosses the line. Missed adds one vehicle and Not a vehicle takes one away, for what the model got wrong." },
+  { k: "Log", d: "Each count is saved under the billboard's name in this browser (localStorage), with the correction kept, and the log and the single vehicles can be exported as CSV. Code: src/oqim/count.ts, with tests in tests/count.test.ts." },
+];
+const bannerChecks: [string, string][] = (banner?.clips ?? []).map((c: { clip: string; light: string; seconds: number; browser: number; reference: number }) => [
+  `${c.browser} / ${c.reference}`,
+  `${c.clip}, ${c.light}, ${bnMin(c.seconds)}: vehicles counted in the browser / by our offline pipeline`,
+]);
+if (banner) bannerChecks.push([`${banner.browserTotal} / ${banner.referenceTotal}`, `both clips together, ${pc(banner.agreement)} agreement`]);
+
 const { source, clips } = loadAudits();
 const websterWorse = clips.filter((c) => (modeOf(c, "webster")?.meanDelay ?? 0) > (modeOf(c, "measured")?.meanDelay ?? Infinity)).length;
 
 const index = [
   { id: "parking", n: "01", t: "Parking tracker" },
-  { id: "architecture", n: "02", t: "Signal audit: architecture" },
-  { id: "measures", n: "03", t: "Measures" },
-  { id: "replay", n: "04", t: "Replay and plans" },
-  { id: "check", n: "05", t: "Model check" },
-  { id: "fails", n: "06", t: "Where it fails" },
-  { id: "privacy", n: "07", t: "Privacy, speed, cost" },
-  { id: "licences", n: "08", t: "Licences" },
+  { id: "banner", n: "02", t: "Billboard traffic" },
+  { id: "architecture", n: "03", t: "Signal audit: architecture" },
+  { id: "measures", n: "04", t: "Measures" },
+  { id: "replay", n: "05", t: "Replay and plans" },
+  { id: "check", n: "06", t: "Model check" },
+  { id: "fails", n: "07", t: "Where it fails" },
+  { id: "privacy", n: "08", t: "Privacy, speed, cost" },
+  { id: "licences", n: "09", t: "Licences" },
 ];
 
 const flow = [
@@ -109,9 +126,9 @@ const licences = [
   { k: "Sample clips", l: "No licence stated", n: "The organisers' footage of one Tashkent junction, given for the elimination task. Used here as samples only." },
 ];
 ---
-<Base title="Method" description="How OQIM works: the parking tracker (free spaces from car park cameras, the whole car park, spaces suggested from one photo, the forecast and the advice), then the signal audit, its measures, replay and check." active="method">
+<Base title="Method" description="How OQIM works: the parking tracker (free spaces from car park cameras, the whole car park, spaces suggested from one photo, the forecast and the advice), the billboard traffic counter, then the signal audit, its measures, replay and check." active="method">
   <PageHead kicker="Method" title="How OQIM works" wide>
-    <p class="lede">First the parking tracker: how a camera frame becomes free spaces, a forecast and advice, and how well each step is measured. Then the next stage, the signal audit from one video of a junction.</p>
+    <p class="lede">First the parking tracker: how a camera frame becomes free spaces, a forecast and advice, and how well each step is measured. Then the billboard counter, which counts the vehicles passing a billboard from a video. Then the next stage, the signal audit from one video of a junction.</p>
   </PageHead>
   <SectionIndex items={index} />
 
@@ -139,8 +156,37 @@ const licences = [
     </div>
   </section>
 
+  <section class="section wrap" id="banner">
+    <SecHead num="02" title="Billboard traffic">
+      <p>How many vehicles pass a billboard, from a video of the road in front of it. Outdoor advertising companies and billboard owners can show the count to advertisers. No plates or faces are read.</p>
+    </SecHead>
+    <dl class="defs" data-reveal>
+      {bannerSteps.map((m) => (
+        <div class="def">
+          <dt>{m.k}</dt>
+          <dd>{m.d}</dd>
+        </div>
+      ))}
+    </dl>
+    {bannerChecks.length > 0 && (
+      <div class="table-scroll cards-sm mods" data-reveal>
+        <table>
+          <thead><tr><th scope="col">Measured</th><th scope="col">What</th></tr></thead>
+          <tbody>
+            {bannerChecks.map(([v, d]) => (
+              <tr><th scope="row"><code>{v}</code></th><td class="wide-sm">{d}</td></tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
+    {banner && (
+      <p class="note">The reference is {banner.reference}. These numbers are agreement between two models, not a hand count. On your own video the green marks and the two buttons are the check.</p>
+    )}
+  </section>
+
   <section class="section wrap" id="architecture">
-    <SecHead num="02" title="Signal audit (next stage): architecture">
+    <SecHead num="03" title="Signal audit (next stage): architecture">
       <p>Everything runs in the browser tab. There is no server step: the site is static files, and the model is one of them.</p>
     </SecHead>
     <ol class="flow" role="list" data-reveal>
@@ -166,7 +212,7 @@ const licences = [
   </section>
 
   <section class="section wrap" id="measures">
-    <SecHead num="03" title="What is measured, and how">
+    <SecHead num="04" title="What is measured, and how">
       <p>The constants below are the ones in <code>src/oqim/</code>. Distances are in work pixels (the frame at 1920 px wide), times in seconds of video.</p>
     </SecHead>
     <dl class="defs" data-reveal>
@@ -180,7 +226,7 @@ const licences = [
   </section>
 
   <section class="section wrap" id="replay">
-    <SecHead num="04" title="The replay, and the plans it compares">
+    <SecHead num="05" title="The replay, and the plans it compares">
       <p>Each approach is a queue at its stop line (a point queue), stepped every 0.1 s. A vehicle joins it at its measured arrival time. On green it leaves: the first of a standing queue one start-up time after the green begins, the rest one headway apart. An approach earns one departure per headway and may save up to BURST = 3, so the lanes of a wide approach can leave side by side.</p>
       <p>Every plan runs the measured lights until the clip's first green, so all plans start from the same queues. Mean delay is the total waiting time over the vehicles; a vehicle still waiting when the clip ends counts until the end.</p>
     </SecHead>
@@ -199,7 +245,7 @@ const licences = [
   </section>
 
   <section class="section wrap" id="check">
-    <SecHead num="05" title="The model check">
+    <SecHead num="06" title="The model check">
       <p>Before the replay may judge a plan, it runs under the measured lights and must give back the crossings on the video. For every vehicle that is not censored, the error is the gap between its departure in the model and its crossing on the video; the table shows the median of that gap over the vehicles checked. It also compares the mean wait in the model with the wait measured on the video.</p>
       <p class="src"><span class="src-k">Source</span> {source}.</p>
     </SecHead>
@@ -273,7 +319,7 @@ const licences = [
   </section>
 
   <section class="section wrap" id="fails">
-    <SecHead num="06" title="Where it fails">
+    <SecHead num="07" title="Where it fails">
       <p>Known limits, from our own runs on the sample junction. Some also show up as warnings in the audit, such as a clip with fewer than two cycles.</p>
     </SecHead>
     <ul class="fails" role="list">
@@ -287,7 +333,7 @@ const licences = [
   </section>
 
   <section class="section wrap" id="privacy">
-    <SecHead num="07" title="Privacy, speed and cost" />
+    <SecHead num="08" title="Privacy, speed and cost" />
     <div class="three">
       <div class="plate" data-reveal>
         <span class="pk">Privacy</span>
@@ -305,7 +351,7 @@ const licences = [
   </section>
 
   <section class="section wrap" id="licences">
-    <SecHead num="08" title="Licences">
+    <SecHead num="09" title="Licences">
       <p>The browser detector, the tracker port, the worker and the video conversion come from our <a href={ELIMINATION_URL} rel="noopener" target="_blank">elimination-stage system</a>, as the README declares.</p>
     </SecHead>
     <div class="table-scroll cards-sm" data-reveal>

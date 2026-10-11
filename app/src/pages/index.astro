@@ -19,6 +19,7 @@ const readData = (file: string): any => {
 };
 const tracker = readData("tracker.json");
 const parking = readData("parking.json");
+const banner = readData("banner.json");
 const tEval = tracker?.eval ?? null;
 const lots: { id: string; name?: string; capacity?: number; date?: string }[] = Array.isArray(tracker?.lots) ? tracker.lots : [];
 const pTest = parking?.eval?.test ?? null;
@@ -328,6 +329,7 @@ const signalSteps = [
     <ul class="tools-grid" role="list">
       <li><a class="plate" href="/tracker" data-reveal><span class="plate-title">Parking tracker</span><span class="plate-text">Car park cameras over a morning: free spaces counted, cars coming in and leaving, free spaces forecast for your arrival, and advice on which car park to take.</span></a></li>
       <li><a class="plate" href="/city" data-reveal><span class="plate-title">District model, Hong Kong</span><span class="plate-text">22 open traffic cameras and live car park vacancy in Kwun Tong: drivers sent to car parks with each other's routes counted.</span></a></li>
+      <li><a class="plate" href="/banner" data-reveal><span class="plate-title">Billboard traffic</span><span class="plate-text">A video from a camera by a billboard: every vehicle that passes is counted once, by type and direction, per minute and per hour, and kept in a log for each billboard. For outdoor advertising companies and billboard owners who need proof of traffic for advertisers.{banner ? ` On ${banner.clips?.length ?? 0} sample clips: ${int(banner.browserTotal)} vehicles against ${int(banner.referenceTotal)} from our offline pipeline (${pct(banner.agreement)}), agreement between two models, not a hand count.` : ""}</span></a></li>
       <li><a class="plate" href="/parking" data-reveal><span class="plate-title">Parking accuracy</span><span class="plate-text">Car park camera frames (PKLot): the detector marks every space free or taken in the browser{pTest ? `; ${pct(pTest.accuracy)} of spaces right on ${int(pTest.images)} held-out images` : ""}.</span></a></li>
       <li><a class="plate" href="/audit" data-reveal><span class="plate-title">Signal audit <span class="chip">next stage</span></span><span class="plate-text">One video of a junction: the lights read from the pixels, every crossing, waits, discharge, red-light runs, and signal plans checked on the junction's own vehicles.</span></a></li>
       <li><a class="plate" href="/network" data-reveal><span class="plate-title">Green wave 3D <span class="chip">next stage</span></span><span class="plate-text">Pick up to five signalised junctions of Tashkent; the vehicles from the video drive them under the timing now and with a green wave.</span></a></li>
