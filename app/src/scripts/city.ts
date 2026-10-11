@@ -307,7 +307,14 @@ async function main(): Promise<void> {
   const newest = Math.max(...parksAll.map((p) => Date.parse((p.lastupdate ?? "").replace(" ", "T") + "+08:00") || 0));
   parksAll = dedupeParks(parksAll.filter((p) => newest - (Date.parse((p.lastupdate ?? "").replace(" ", "T") + "+08:00") || 0) < 6 * 3600e3));
   const points = district.cameras.reduce((s, c) => s + c.series.length, 0);
-  $("notes").textContent = `Sources: ${district.source}; ${snap.source}; roads ${roads.source}. ${district.cameras.length} cameras, ${points} snapshots counted. Road load is an estimate: the vehicles a camera sees, relative to the busiest tenth of its snapshots, mapped to a volume-to-capacity ratio (0.3 to 0.95) on the roads within 300 m; travel times follow the BPR function. Drivers and their origins are simulated (seeded); free spaces are real, and in the model 1% of the occupied spaces of a car park free up each minute (an assumption). A driver who finds the car park full searches for 8 minutes. Both strategies are judged by the same model.`;
+  // the forecast checked on every camera: one snapshot ahead, against "same as the last one"
+  let errH = 0, errN = 0, steps = 0;
+  for (const c of district.cameras) {
+    const h = holt(c.series.map((p) => p.vehicles), 1);
+    if (h.n) [errH, errN, steps] = [errH + h.mae * h.n, errN + h.naiveMae * h.n, steps + h.n];
+  }
+  const backtest = steps ? ` Forecast check over ${steps} snapshots: mean error ${(errH / steps).toFixed(2)} vehicles one snapshot ahead, against ${(errN / steps).toFixed(2)} for "same as the last one".` : "";
+  $("notes").textContent = `Sources: ${district.source}; ${snap.source}; roads ${roads.source}. ${district.cameras.length} cameras, ${points} snapshots counted. Road load is an estimate: the vehicles a camera sees, relative to the busiest tenth of its snapshots, mapped to a volume-to-capacity ratio (0.3 to 0.95) on the roads within 300 m; travel times follow the BPR function. Drivers and their origins are simulated (seeded); free spaces are real, and in the model 1% of the occupied spaces of a car park free up each minute (an assumption). A driver who finds the car park full searches for 8 minutes. Both strategies are judged by the same model.${backtest}`;
 
   const style = await stylePromise;
   map = new maplibregl.Map({ container: "map", style, center: district.center, zoom: 15, pitch: 45, bearing: -15, attributionControl: { compact: true } });

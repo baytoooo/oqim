@@ -3,7 +3,8 @@
 
 Run with /Users/bayto/Desktop/claude/traffic-events/.venv/bin/python (ultralytics + OpenCV).
 For every image in samples_src/hongkong/<key>/*.jpg not processed yet (in time order):
-  - YOLO26n (imgsz 640, conf 0.25, classes car/motorcycle/bus/truck)
+  - YOLO26m (imgsz 960, conf 0.2, classes car/motorcycle/bus/truck): on these 320 x 240
+    snapshots it finds about 70% more vehicles than YOLO26n at 640 (5.25 against 3.08 a frame on 40 frames)
   - vehicles = box count
   - density  = sum of box areas / image area
   - standing = boxes that overlap a box of the previous image of the same camera with
@@ -34,12 +35,12 @@ APP = os.path.join(HERE, "..", "app", "public")
 OUT = os.path.join(APP, "data", "hongkong.json")
 ROADS = os.path.join(APP, "data", "hongkong_roads.json")
 MEDIA = os.path.join(APP, "media", "hongkong")
-WEIGHTS = "/Users/bayto/Desktop/claude/traffic-events/weights/yolo26n.pt"
+WEIGHTS = "/Users/bayto/Desktop/claude/traffic-events/weights/yolo26m.pt"
 CLASSES = [2, 3, 5, 7]
 CENTER = [114.2155, 22.3162]
 PERIOD_S = 120
 SOURCE = ("Transport Department, Hong Kong SAR Government, traffic snapshot images via "
-          "DATA.GOV.HK; detection: YOLO26n (Ultralytics, AGPL-3.0)")
+          "DATA.GOV.HK; detection: YOLO26m (Ultralytics, AGPL-3.0)")
 
 
 def log(msg):
@@ -73,7 +74,7 @@ def one_round(model, cams, state, series):
                 done[key] = 0
                 continue
             h, w = im.shape[:2]
-            r = model.predict(im, imgsz=640, conf=0.25, classes=CLASSES, verbose=False)[0]
+            r = model.predict(im, imgsz=960, conf=0.2, classes=CLASSES, verbose=False)[0]
             b = [[round(v, 1) for v in bb] for bb in r.boxes.xyxy.cpu().numpy().tolist()]
             prev = boxes.get(c["id"])
             st = standing(b, prev) if prev is not None else 0

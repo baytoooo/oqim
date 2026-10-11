@@ -89,7 +89,7 @@ Say clearly: this is a simulation (Intelligent Driver Model), one direction, cro
 
 https://oqim-audit.vercel.app/city
 
-- 22 Transport Department traffic cameras within 700 m (open data, DATA.GOV.HK), counted by YOLO26n every 2 minutes; the load on each road now and forecast 10 minutes ahead (Holt's smoothing, backtested against "same as last").
+- 22 Transport Department traffic cameras within 700 m (open data, DATA.GOV.HK), counted by YOLO26m every 1 to 2 minutes; the load on each road now and forecast 10 minutes ahead (Holt's smoothing, backtested against "same as last").
 - Car park vacancy live from the Transport Department API (private cars), about 20 car parks around the destination.
 - 60 drivers heading to Kwun Tong MTR station within 10 minutes (simulated, seeded). "Nearest": every driver to the closest car park, as a navigator does. "OQIM": drivers placed one by one; each gets the car park and route of least door-to-door time given the roads already loaded by the drivers placed before and the spaces they will take.
 - At 13:45 Hong Kong time on 11 October: the nearest car park (apm) had 0 free spaces, so all 60 "nearest" drivers arrived to a full car park; with OQIM 5 did. Door to door 15.5 min against 12.7 min (minus 18%), vehicle-km with searching 305 against 181 (minus 41%).
