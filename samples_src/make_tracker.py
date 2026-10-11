@@ -42,10 +42,10 @@ def minutes(s):
 
 
 WHOLE_TEXT = ("the rest of the car park, outside the hand-labelled spaces: a space is wherever a vehicle box "
-              "(confidence 0.3 or more) stays in one place, IoU 0.5 with itself, on 4 frames or more (20 minutes); "
-              "it is taken when a box with confidence 0.15 or more overlaps it with IoU 0.4, and changes state when "
+              "(confidence 0.15 or more; the far rows also on 5 x 5 tiles enlarged 3 times) stays in one place, IoU 0.35 with itself, on 4 frames or more (20 minutes); "
+              "it is taken when a box with confidence 0.1 or more overlaps it with IoU 0.25, and changes state when "
               "two frames in a row agree")
-MIN_FRAMES, SEEN_CONF, OCC_CONF = 4, 0.3, 0.15
+MIN_FRAMES, SEEN_CONF, OCC_CONF, FINE, MATCH, OCC_IOU = 4, 0.15, 0.1, 5, 0.35, 0.25
 
 
 def iou(a, b):
@@ -68,7 +68,7 @@ def discover(all_boxes, labelled, frames):
         for b in nb:
             if b[4] < SEEN_CONF:
                 continue
-            best, bi = 0.5, -1
+            best, bi = MATCH, -1
             for i, c in enumerate(cands):
                 v = iou(b, c)
                 if v >= best:
@@ -94,7 +94,7 @@ def discover(all_boxes, labelled, frames):
     extra = [c for c in sp if not inside_labelled(c)]
     auto, state, prev = [], None, None
     for nb in norm:
-        raw = ["1" if any(b[4] >= OCC_CONF and iou(b, c) >= 0.4 for b in nb) else "0" for c in extra]
+        raw = ["1" if any(b[4] >= OCC_CONF and iou(b, c) >= OCC_IOU for b in nb) else "0" for c in extra]
         state = raw[:] if state is None else [raw[k] if raw[k] == prev[k] else state[k] for k in range(len(extra))]
         prev = raw
         auto.append("".join(state))
@@ -132,6 +132,8 @@ def main():
     model = YOLO(a.weights)
     cache_p = os.path.join(a.data, "tracker_dets_conf_%s.json" % os.path.basename(a.weights).split(".")[0])
     cache = json.load(open(cache_p)) if os.path.exists(cache_p) else {}
+    fine_p = cache_p.replace(".json", "_fine%d.json" % FINE)
+    fine = json.load(open(fine_p)) if os.path.exists(fine_p) else {}
     media = os.path.join(APP, "media", "tracker")
     os.makedirs(media, exist_ok=True)
 
@@ -156,7 +158,23 @@ def main():
                         out.append([bx[0] + x0, bx[1] + y0, bx[2] + x0, bx[3] + y0, float(b.conf[0])])
                 cache[r["file"]] = out
             boxes = cache[r["file"]]
-            all_boxes.append((boxes, w, h))
+            if r["file"] not in fine:
+                # far rows: cars of 30 to 40 px; 5 x 5 tiles over the top 60% of the frame, each enlarged 3 times
+                fb = []
+                for (x0, y0, x1, y1) in tiles(w, h, FINE)[1:]:
+                    if y0 >= 0.6 * h:
+                        continue
+                    res = model.predict(im[y0:y1, x0:x1], imgsz=960, conf=0.1, classes=list(VEHICLES), verbose=False)[0]
+                    for b in res.boxes:
+                        bx = list(map(float, b.xyxy[0].tolist()))
+                        if (bx[2] - bx[0]) * (bx[3] - bx[1]) > MAX_TILE_BOX * (x1 - x0) * (y1 - y0):
+                            continue
+                        # a box cut by the tile edge is half a car
+                        if (bx[0] < 2 and x0 > 0) or (bx[1] < 2 and y0 > 0) or (bx[2] > x1 - x0 - 2 and x1 < w) or (bx[3] > y1 - y0 - 2 and y1 < h):
+                            continue
+                        fb.append([bx[0] + x0, bx[1] + y0, bx[2] + x0, bx[3] + y0, float(b.conf[0])])
+                fine[r["file"]] = fb
+            all_boxes.append((boxes + fine[r["file"]], w, h))
             sp = sorted(r["spaces"], key=lambda s: int(s["id"]) if str(s["id"]).isdigit() else 0)
             if ids is None:
                 ids = [s["id"] for s in sp]
@@ -212,6 +230,7 @@ def main():
                          "capacity": len(ids), "w": OUT_W, "h": OUT_H, "spaces": polys,
                          "extra": [[round(v, 1) for v in e] for e in extra], "frames": frames, "profile": profile, "profileDays": sorted(days)})
     json.dump(cache, open(cache_p, "w"))
+    json.dump(fine, open(fine_p, "w"))
     tp = sum(1 for g, d in allrows if g and d); tn = sum(1 for g, d in allrows if not g and not d)
     fe = sorted(free_err)
     out = {
