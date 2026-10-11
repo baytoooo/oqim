@@ -207,8 +207,8 @@ function events() {
 function chart() {
   const lot = L()[sel];
   $("tr-chart-name").textContent = lot.name;
-  const W = 640, H = 220, L = 36, R = 10, T = 10, B = 24;
-  const x = (m: number) => L + ((m - t0) / (t1 - t0)) * (W - L - R);
+  const W = 640, H = 220, PL = 36, R = 10, T = 10, B = 24;
+  const x = (m: number) => PL + ((m - t0) / (t1 - t0)) * (W - PL - R);
   const y = (v: number) => T + (1 - v / lot.capacity) * (H - T - B);
   const path = (pts: [number, number][]) => pts.map(([a, b], i) => `${i ? "L" : "M"}${x(a).toFixed(1)},${y(b).toFixed(1)}`).join("");
   const det = lot.frames.filter((f) => minutes(f.t) <= now).map((f) => [minutes(f.t), lot.capacity - taken(f)] as [number, number]);
@@ -223,7 +223,7 @@ function chart() {
   }
   let grid = "";
   for (let m = Math.ceil(t0 / 30) * 30; m <= t1; m += 30) grid += `<line x1="${x(m)}" x2="${x(m)}" y1="${T}" y2="${H - B}" stroke="rgba(255,255,255,.07)"/><text x="${x(m)}" y="${H - 6}" fill="#8b9096" font-size="11" text-anchor="middle">${clock(m)}</text>`;
-  for (const v of [0, Math.round(lot.capacity / 2), lot.capacity]) grid += `<text x="${L - 6}" y="${y(v) + 4}" fill="#8b9096" font-size="11" text-anchor="end">${v}</text><line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="rgba(255,255,255,.07)"/>`;
+  for (const v of [0, Math.round(lot.capacity / 2), lot.capacity]) grid += `<text x="${PL - 6}" y="${y(v) + 4}" fill="#8b9096" font-size="11" text-anchor="end">${v}</text><line x1="${PL}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="rgba(255,255,255,.07)"/>`;
   $("tr-chart").innerHTML =
     grid +
     (mode === "labelled" ? `<path d="${path(gt)}" fill="none" stroke="#c9cdd2" stroke-width="1.5" stroke-dasharray="2 3"/>` : "") +
@@ -423,5 +423,6 @@ async function main() {
 }
 
 main().catch((e) => {
+  console.error(e);
   $("tr-cam-name").textContent = `Could not load the tracker data: ${e}`;
 });
