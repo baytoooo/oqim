@@ -253,61 +253,53 @@ export function audit(input: AuditInput): Audit {
   };
 
   // Webster: y = q / s of the busiest approach of each group. The phases out of view (the cross
-  // street the camera does not see) count as one more group, loaded as much as the groups we see
-  // (the same degree of saturation): their demand is unknown, so this keeps their share of the cycle.
+  // street the camera does not see) keep the share of the cycle they have now, so every plan gives
+  // them as much green per hour as today: their traffic is not counted, so no plan may take their
+  // time to make the approaches in view look better.
   const yObs = order.map((gi) =>
     Math.max(0, ...approaches.filter((a) => a.group === gi).map((a) => ((controlled(a).length / Math.max(1, duration)) * 3600) / (3600 / a.headway))),
   );
   const startups = order.map((gi) => Math.max(0, ...approaches.filter((a) => a.group === gi).map((a) => a.startup)));
   const greenNow = order.map((gi) => Math.max(1, ...approaches.filter((a) => a.group === gi).map((a) => a.greenMean ?? 0)));
-  const xObs = cycle ? Math.max(...yObs.map((v, o) => v / Math.max(0.05, (greenNow[o] - startups[o]) / cycle))) : 0.8;
-  const hiddenLost = hidden > 0 ? intergreen + DEFAULTS.startup : 0;
-  const yHidden = hidden > 0 && cycle ? Math.min(0.6, (Math.max(0, hidden - hiddenLost) / cycle) * xObs) : 0;
-  const Y = yObs.reduce((s, v) => s + v, 0) + yHidden;
-  const oversaturated = Y >= 0.9;
-  const lost = order.length * intergreen + startups.reduce((s, v) => s + v, 0) + hiddenLost;
-  const plan = (C: number) => {
-    const effective = Math.max(0, C - lost);
-    const greens = order.map((_, o) => Math.max(DEFAULTS.minGreen, effective * (Y > 0 ? yObs[o] / Y : 1 / order.length) + startups[o]));
-    const hid = hidden > 0 ? hiddenLost + effective * (yHidden / Y) : 0;
+  const share = hidden > 0 && cycle ? hidden / cycle : 0;
+  const Y = yObs.reduce((s, v) => s + v, 0);
+  const lost = order.length * intergreen + startups.reduce((s, v) => s + v, 0);
+  const oversaturated = Y + share >= 0.9;
+  const shaped = (C: number, power = 1) => {
+    const hid = share * C;
+    const effective = Math.max(0, C - lost - hid);
+    const wts = yObs.map((v) => Math.pow(Math.max(1e-6, v), power));
+    const tot = wts.reduce((a, b) => a + b, 0);
+    const greens = order.map((_, o) => Math.max(DEFAULTS.minGreen, (effective * wts[o]) / tot + startups[o]));
     return { greens, hidden: hid };
   };
-  const websterCycle = Math.min(DEFAULTS.maxCycle, Math.max(DEFAULTS.minCycle, oversaturated ? DEFAULTS.maxCycle : (1.5 * lost + 5) / (1 - Y)));
-  if (oversaturated) warnings.push(`Demand is near capacity (Y = ${Y.toFixed(2)}): retiming helps little; the junction needs capacity or less traffic.`);
-  if (hidden > 0) warnings.push(`About ${hidden.toFixed(0)} s of each cycle go to phases out of view; the plans keep them loaded as much as the approaches in view.`);
+  // C0 = (1.5 L + 5) / (1 - Y), with the phases out of view taking share * C0 of it
+  const denom = 1 - Y - 1.5 * share;
+  const websterCycle = Math.min(DEFAULTS.maxCycle, Math.max(DEFAULTS.minCycle, oversaturated || denom < 0.1 ? DEFAULTS.maxCycle : (1.5 * lost + 5) / denom));
+  if (oversaturated) warnings.push(`Demand is near capacity (Y = ${(Y + share).toFixed(2)}): retiming helps little; the junction needs capacity or less traffic.`);
+  if (hidden > 0) warnings.push(`About ${hidden.toFixed(0)} s of each ${cycle?.toFixed(0)} s cycle go to phases out of view; every plan keeps that share of the cycle for them.`);
 
   const run = (c: Controller) => simulate(junction, c);
   const measured = run({ kind: "measured" });
-  const w = plan(websterCycle);
+  const w = shaped(websterCycle);
   const webster = run({ kind: "fixed", ...w });
 
-  // the cycle that loses least on this clip's own vehicles, split as Webster's; the current timing,
-  // run as a fixed plan, is a candidate too
+  // the current timing run as a fixed plan, then every cycle from 40 to 150 s with the split by
+  // demand raised to a power (sharper or flatter than Webster's)
   let best = { C: websterCycle, ...w, sim: webster };
   if (cycle !== null) {
     const cur = { greens: greenNow, hidden };
     const sim = run({ kind: "fixed", ...cur });
     if (sim.vehHours < best.sim.vehHours - 1e-9) best = { C: cycle, ...cur, sim };
   }
-  // search: every cycle from 40 to 150 s, the green split by demand raised to a power (sharper or
-  // flatter than Webster's) and the time of the phases out of view scaled up or down
-  const shaped = (C: number, power: number, hiddenScale: number) => {
-    const hid = hidden > 0 ? hiddenLost + Math.max(0, C - lost) * (yHidden / Math.max(1e-6, Y)) * hiddenScale : 0;
-    const effective = Math.max(0, C - lost - (hid > 0 ? hid - hiddenLost : 0));
-    const wts = yObs.map((v) => Math.pow(Math.max(1e-6, v), power));
-    const tot = wts.reduce((a, b) => a + b, 0);
-    const greens = order.map((_, o) => Math.max(DEFAULTS.minGreen, (effective * wts[o]) / tot + startups[o]));
-    return { greens, hidden: hid };
-  };
   let tried = 0;
   for (let C = DEFAULTS.minCycle; C <= DEFAULTS.maxCycle; C += 5)
-    for (const power of order.length > 1 ? [0.5, 1, 1.5] : [1])
-      for (const hs of hidden > 0 ? [0.7, 0.85, 1, 1.15, 1.3] : [1]) {
-        const p = shaped(C, power, hs);
-        const sim = run({ kind: "fixed", ...p });
-        tried++;
-        if (sim.vehHours < best.sim.vehHours - 1e-9) best = { C, ...p, sim };
-      }
+    for (const power of order.length > 1 ? [0.5, 1, 1.5] : [1]) {
+      const p = shaped(C, power);
+      const sim = run({ kind: "fixed", ...p });
+      tried++;
+      if (sim.vehHours < best.sim.vehHours - 1e-9) best = { C, ...p, sim };
+    }
   const maxGreen = Math.max(30, ...best.greens.map((g) => 1.6 * g));
   const actuated = run({ kind: "actuated", min: DEFAULTS.minGreen, max: maxGreen, gap: 3 });
   const pressure = run({ kind: "maxpressure", min: DEFAULTS.minGreen, max: maxGreen, step: 5, hidden: best.hidden });
@@ -317,7 +309,7 @@ export function audit(input: AuditInput): Audit {
   const modes: ModeResult[] = [
     { key: "measured", label: "Now", note: "the lights as read from the video", sim: measured, cycle: cycle ?? undefined },
     { key: "webster", label: "Webster formula (1958)", note: "the textbook cycle and split for the measured demand", sim: webster, greens: w.greens, cycle: sum(w.greens, w.hidden) },
-    { key: "tuned", label: "Searched fixed plan", note: `the best of ${tried + 2} fixed plans (cycle 40 to 150 s, split and the phases out of view varied) replayed on this clip`, sim: best.sim, greens: best.greens, cycle: sum(best.greens, best.hidden) },
+    { key: "tuned", label: "Searched fixed plan", note: `the best of ${tried + 2} fixed plans (cycle 40 to 150 s and the split varied; the phases out of view keep their share) replayed on this clip`, sim: best.sim, greens: best.greens, cycle: sum(best.greens, best.hidden) },
     { key: "actuated", label: "Actuated", note: "green held while vehicles keep coming (3 s gap), as a loop detector controller", sim: actuated },
     { key: "maxpressure", label: "Max-pressure", note: "every 5 s, green to the group with the longest queue (Varaiya 2013); it needs no plan and works junction by junction in a network", sim: pressure },
     { key: "predictive", label: "OQIM predictive", note: "starts from the searched plan and, each second, ends or holds the green by the next 30 s of arrivals (in the field: the camera upstream)", sim: predictive },

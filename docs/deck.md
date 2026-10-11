@@ -9,7 +9,7 @@ Slide text is in English; the notes under each slide are for the speaker.
 
 - Mode: **Startup**
 - Team PariVision, Webster University in Tashkent: Amal Karimov, Komronbek Qodirov, Aziza Adizova
-- Live: https://oqim.vercel.app · Code: https://github.com/baytoooo/oqim
+- Live: https://oqim-audit.vercel.app · Code: https://github.com/baytoooo/oqim
 
 Notes: say the mode out loud on this slide, the rules ask for it.
 
@@ -29,7 +29,7 @@ Notes: say the mode out loud on this slide, the rules ask for it.
 
 ## 3. Live demo (2:00)
 
-1. Open https://oqim.vercel.app/audit on the jury's laptop or phone.
+1. Open https://oqim-audit.vercel.app/audit on the jury's laptop or phone.
 2. Take the jury's video (or a sample). Draw the stop line (2 clicks), click the signal head.
 3. Run. A 2-minute clip takes about 25 s on a laptop GPU; the video never leaves the device.
 4. Show: the lights read from the head, every crossing as a tick, the queue line, the plans table, the model check line.
@@ -58,12 +58,12 @@ Four clips of one Tashkent junction (the organisers' footage, 18 minutes), south
 | Clip | Length | Cycle read | Vehicles | Model check: median departure error | Wait: model / measured |
 |---|---|---|---|---|---|
 | C3896 | 5:40 | 75 s | 130 | 0.50 s | 9.3 / 12.8 s |
-| C3897 | 5:18 | 75 s | 127 | 0.09 s | 10.0 / 10.4 s |
-| C3902 | 5:18 | 80 s | 170 | 0.57 s | 13.1 / 12.0 s |
-| C3905 | 2:08 | 80 s | 59 | 5.04 s | 11.5 / 6.6 s |
+| C3897 | 5:18 | 75 s | 127 | 0.29 s | 10.0 / 10.5 s |
+| C3902 | 5:18 | 80 s | 170 | 0.55 s | 12.3 / 12.0 s |
+| C3905 | 2:08 | 80 s | 59 | 4.54 s | 10.3 / 6.6 s |
 
-- Webster's textbook plan was **worse** than the current timing on all four clips (for example 13.5 s against 10.0 s on C3897). That is why OQIM never recommends a plan before replaying it on the junction's own vehicles.
-- The current timing of this approach is close to the best fixed plan we found; the predictive mode cut the mean wait by 17% on C3897 (10.0 to 8.3 s) and changed little on the others.
+- Webster's textbook plan was **worse** than the current timing on all four clips (for example 29.7 s against 10.0 s on C3897). Every plan keeps the share of the cycle the cross street has today, because its traffic is out of view. That is why OQIM never recommends a plan before replaying it on the junction's own vehicles.
+- The current timing of this approach is close to the best fixed plan we found (9.4 s against 10.0 s on C3897); the predictive mode cut the mean wait by 13% on C3897 (10.0 to 8.7 s) and by 18% on C3902 (12.3 to 10.1 s).
 - Known failure cases: short clips (under 2 cycles, see C3905), long queues where tracks break, a stop line drawn over two directions, free right turns counted as red crossings, night and rain not yet measured on a test set of our own.
 
 Source: these numbers were computed with the elimination pipeline's tracks (YOLO26m at 1280 px, 10 fps); the browser runs YOLO26s at 5 fps. Re-run in the browser before the defence and update if they differ.

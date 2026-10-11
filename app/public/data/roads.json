@@ -1,0 +1,400 @@
+{
+ "classes": [
+  {
+   "id": 3,
+   "code": "D40",
+   "name": "Pothole",
+   "rank": 4,
+   "color": "#ff5b4c"
+  },
+  {
+   "id": 2,
+   "code": "D20",
+   "name": "Alligator crack",
+   "rank": 3,
+   "color": "#ff9f1c"
+  },
+  {
+   "id": 1,
+   "code": "D10",
+   "name": "Transverse crack",
+   "rank": 2,
+   "color": "#f3c316"
+  },
+  {
+   "id": 0,
+   "code": "D00",
+   "name": "Longitudinal crack",
+   "rank": 1,
+   "color": "#5fb4ff"
+  }
+ ],
+ "conf": 0.25,
+ "input": 640,
+ "model": "/roads/model.onnx",
+ "map_center": [
+  69.2797,
+  41.3111
+ ],
+ "dataset": "RDD2022 (Arya et al., arXiv:2209.08538), CC BY-SA 4.0, via https://huggingface.co/datasets/dronefreak/RDD2022",
+ "samples": [
+  {
+   "id": "India_009370",
+   "src": "/media/roads/India_009370.jpg",
+   "w": 720,
+   "h": 720,
+   "country": "India",
+   "original": "RDD2022 test, India_009370.jpg, 720 x 720",
+   "demo": {
+    "street": "Amir Temur Avenue, Yunusobod",
+    "lat": 41.3405,
+    "lon": 69.2853
+   },
+   "labels": [
+    [
+     0,
+     297,
+     470,
+     352,
+     667
+    ],
+    [
+     2,
+     367,
+     469,
+     720,
+     689
+    ],
+    [
+     3,
+     534,
+     567,
+     663,
+     695
+    ]
+   ],
+   "offline": [
+    [
+     2,
+     357,
+     490,
+     718,
+     684,
+     0.641
+    ],
+    [
+     3,
+     528,
+     558,
+     648,
+     687,
+     0.605
+    ],
+    [
+     0,
+     293,
+     458,
+     352,
+     681,
+     0.27
+    ]
+   ],
+   "offline_hits": 3
+  },
+  {
+   "id": "Japan_012046",
+   "src": "/media/roads/Japan_012046.jpg",
+   "w": 600,
+   "h": 600,
+   "country": "Japan",
+   "original": "RDD2022 test, Japan_012046.jpg, 600 x 600",
+   "demo": {
+    "street": "Bunyodkor Avenue, Chilonzor",
+    "lat": 41.2846,
+    "lon": 69.2104
+   },
+   "labels": [
+    [
+     3,
+     325,
+     510,
+     363,
+     527
+    ],
+    [
+     3,
+     343,
+     412,
+     390,
+     428
+    ],
+    [
+     2,
+     515,
+     456,
+     600,
+     599
+    ]
+   ],
+   "offline": [
+    [
+     3,
+     323,
+     508,
+     361,
+     524,
+     0.622
+    ],
+    [
+     3,
+     345,
+     413,
+     387,
+     425,
+     0.538
+    ],
+    [
+     2,
+     511,
+     456,
+     600,
+     600,
+     0.458
+    ],
+    [
+     2,
+     508,
+     515,
+     600,
+     600,
+     0.319
+    ]
+   ],
+   "offline_hits": 3
+  },
+  {
+   "id": "United_States_004546",
+   "src": "/media/roads/United_States_004546.jpg",
+   "w": 640,
+   "h": 640,
+   "country": "United States",
+   "original": "RDD2022 test, United_States_004546.jpg, 640 x 640",
+   "demo": {
+    "street": "Shota Rustaveli Street",
+    "lat": 41.2937,
+    "lon": 69.2668
+   },
+   "labels": [
+    [
+     2,
+     0,
+     382,
+     496,
+     632
+    ],
+    [
+     2,
+     0,
+     376,
+     180,
+     484
+    ]
+   ],
+   "offline": [
+    [
+     2,
+     2,
+     381,
+     593,
+     636,
+     0.657
+    ],
+    [
+     2,
+     0,
+     370,
+     200,
+     481,
+     0.384
+    ]
+   ],
+   "offline_hits": 2
+  },
+  {
+   "id": "China_MotorBike_000864",
+   "src": "/media/roads/China_MotorBike_000864.jpg",
+   "w": 512,
+   "h": 512,
+   "country": "China MotorBike",
+   "original": "RDD2022 test, China_MotorBike_000864.jpg, 512 x 512",
+   "demo": {
+    "street": "Buyuk Ipak Yuli Street",
+    "lat": 41.3265,
+    "lon": 69.3335
+   },
+   "labels": [
+    [
+     1,
+     1,
+     276,
+     512,
+     401
+    ]
+   ],
+   "offline": [
+    [
+     1,
+     1,
+     311,
+     511,
+     411,
+     0.561
+    ]
+   ],
+   "offline_hits": 1
+  },
+  {
+   "id": "Czech_000434",
+   "src": "/media/roads/Czech_000434.jpg",
+   "w": 600,
+   "h": 600,
+   "country": "Czech",
+   "original": "RDD2022 test, Czech_000434.jpg, 600 x 600",
+   "demo": {
+    "street": "Alisher Navoi Street",
+    "lat": 41.3227,
+    "lon": 69.2503
+   },
+   "labels": [
+    [
+     0,
+     257,
+     430,
+     313,
+     520
+    ]
+   ],
+   "offline": [
+    [
+     0,
+     260,
+     438,
+     311,
+     524,
+     0.354
+    ]
+   ],
+   "offline_hits": 1
+  },
+  {
+   "id": "Norway_000645",
+   "src": "/media/roads/Norway_000645.jpg",
+   "w": 1024,
+   "h": 573,
+   "country": "Norway",
+   "original": "RDD2022 test, Norway_000645.jpg, 3650 x 2044",
+   "demo": {
+    "street": "Mustaqillik Avenue",
+    "lat": 41.3247,
+    "lon": 69.296
+   },
+   "labels": [
+    [
+     0,
+     433,
+     363,
+     438,
+     375
+    ],
+    [
+     0,
+     444,
+     361,
+     452,
+     377
+    ],
+    [
+     0,
+     325,
+     361,
+     341,
+     378
+    ],
+    [
+     0,
+     340,
+     320,
+     346,
+     324
+    ],
+    [
+     0,
+     381,
+     337,
+     458,
+     345
+    ],
+    [
+     0,
+     376,
+     498,
+     419,
+     522
+    ],
+    [
+     0,
+     395,
+     304,
+     403,
+     311
+    ],
+    [
+     0,
+     149,
+     517,
+     197,
+     572
+    ],
+    [
+     1,
+     166,
+     374,
+     433,
+     385
+    ],
+    [
+     0,
+     300,
+     380,
+     323,
+     407
+    ],
+    [
+     0,
+     440,
+     377,
+     447,
+     399
+    ],
+    [
+     1,
+     399,
+     361,
+     444,
+     364
+    ]
+   ],
+   "offline": [
+    [
+     0,
+     147,
+     519,
+     191,
+     572,
+     0.674
+    ]
+   ],
+   "offline_hits": 1
+  }
+ ]
+}

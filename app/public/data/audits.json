@@ -6,7 +6,7 @@
    "duration": 340.3,
    "cycle": 75.1,
    "hidden": 35.1,
-   "Y": 0.5,
+   "Y": 0.27,
    "approaches": [
     {
      "name": "Southbound",
@@ -32,18 +32,18 @@
     {
      "key": "webster",
      "label": "Webster formula (1958)",
-     "meanDelay": 12.3,
-     "vehHours": 0.441,
-     "leftWaiting": 6,
-     "cycle": 45.6
+     "meanDelay": 32.6,
+     "vehHours": 1.168,
+     "leftWaiting": 21,
+     "cycle": 150
     },
     {
      "key": "tuned",
      "label": "Searched fixed plan",
-     "meanDelay": 7.2,
-     "vehHours": 0.259,
+     "meanDelay": 9.4,
+     "vehHours": 0.337,
      "leftWaiting": 0,
-     "cycle": 75
+     "cycle": 75.1
     },
     {
      "key": "actuated",
@@ -56,16 +56,16 @@
     {
      "key": "maxpressure",
      "label": "Max-pressure",
-     "meanDelay": 14.7,
-     "vehHours": 0.526,
-     "leftWaiting": 6,
+     "meanDelay": 16.9,
+     "vehHours": 0.605,
+     "leftWaiting": 10,
      "cycle": null
     },
     {
      "key": "predictive",
      "label": "OQIM predictive",
-     "meanDelay": 6.8,
-     "vehHours": 0.245,
+     "meanDelay": 9.1,
+     "vehHours": 0.325,
      "leftWaiting": 0,
      "cycle": null
     }
@@ -82,7 +82,7 @@
    "duration": 317.8,
    "cycle": 75.1,
    "hidden": 35,
-   "Y": 0.49,
+   "Y": 0.27,
    "approaches": [
     {
      "name": "Southbound",
@@ -108,16 +108,16 @@
     {
      "key": "webster",
      "label": "Webster formula (1958)",
-     "meanDelay": 13.3,
-     "vehHours": 0.468,
-     "leftWaiting": 0,
-     "cycle": 43.7
+     "meanDelay": 29.7,
+     "vehHours": 1.047,
+     "leftWaiting": 9,
+     "cycle": 150
     },
     {
      "key": "tuned",
      "label": "Searched fixed plan",
-     "meanDelay": 5.6,
-     "vehHours": 0.199,
+     "meanDelay": 9.4,
+     "vehHours": 0.332,
      "leftWaiting": 0,
      "cycle": 75
     },
@@ -132,16 +132,16 @@
     {
      "key": "maxpressure",
      "label": "Max-pressure",
-     "meanDelay": 6.5,
-     "vehHours": 0.229,
+     "meanDelay": 8.6,
+     "vehHours": 0.303,
      "leftWaiting": 0,
      "cycle": null
     },
     {
      "key": "predictive",
      "label": "OQIM predictive",
-     "meanDelay": 5.7,
-     "vehHours": 0.202,
+     "meanDelay": 8.7,
+     "vehHours": 0.308,
      "leftWaiting": 0,
      "cycle": null
     }
@@ -158,7 +158,7 @@
    "duration": 317.8,
    "cycle": 80.1,
    "hidden": 40,
-   "Y": 0.55,
+   "Y": 0.28,
    "approaches": [
     {
      "name": "Southbound",
@@ -184,40 +184,40 @@
     {
      "key": "webster",
      "label": "Webster formula (1958)",
-     "meanDelay": 16.6,
-     "vehHours": 0.778,
-     "leftWaiting": 25,
-     "cycle": 47.1
+     "meanDelay": 28.8,
+     "vehHours": 1.353,
+     "leftWaiting": 45,
+     "cycle": 150
     },
     {
      "key": "tuned",
      "label": "Searched fixed plan",
-     "meanDelay": 7.9,
-     "vehHours": 0.37,
-     "leftWaiting": 0,
-     "cycle": 120
+     "meanDelay": 13,
+     "vehHours": 0.61,
+     "leftWaiting": 10,
+     "cycle": 45
     },
     {
      "key": "actuated",
      "label": "Actuated",
-     "meanDelay": 21.6,
-     "vehHours": 1.012,
+     "meanDelay": 21.1,
+     "vehHours": 0.989,
      "leftWaiting": 0,
      "cycle": null
     },
     {
      "key": "maxpressure",
      "label": "Max-pressure",
-     "meanDelay": 28.4,
-     "vehHours": 1.332,
-     "leftWaiting": 22,
+     "meanDelay": 12.7,
+     "vehHours": 0.598,
+     "leftWaiting": 25,
      "cycle": null
     },
     {
      "key": "predictive",
      "label": "OQIM predictive",
-     "meanDelay": 8,
-     "vehHours": 0.376,
+     "meanDelay": 10.1,
+     "vehHours": 0.474,
      "leftWaiting": 0,
      "cycle": null
     }
@@ -234,7 +234,7 @@
    "duration": 127.6,
    "cycle": 80,
    "hidden": 36.9,
-   "Y": 0.68,
+   "Y": 0.37,
    "approaches": [
     {
      "name": "Southbound",
@@ -260,18 +260,18 @@
     {
      "key": "webster",
      "label": "Webster formula (1958)",
-     "meanDelay": 13,
-     "vehHours": 0.213,
-     "leftWaiting": 0,
-     "cycle": 71.9
+     "meanDelay": 11.9,
+     "vehHours": 0.195,
+     "leftWaiting": 5,
+     "cycle": 150
     },
     {
      "key": "tuned",
      "label": "Searched fixed plan",
-     "meanDelay": 6.6,
-     "vehHours": 0.108,
-     "leftWaiting": 0,
-     "cycle": 150
+     "meanDelay": 7.2,
+     "vehHours": 0.119,
+     "leftWaiting": 2,
+     "cycle": 90
     },
     {
      "key": "actuated",
@@ -284,17 +284,17 @@
     {
      "key": "maxpressure",
      "label": "Max-pressure",
-     "meanDelay": 8.4,
-     "vehHours": 0.137,
+     "meanDelay": 7.5,
+     "vehHours": 0.123,
      "leftWaiting": 6,
      "cycle": null
     },
     {
      "key": "predictive",
      "label": "OQIM predictive",
-     "meanDelay": 6.6,
-     "vehHours": 0.108,
-     "leftWaiting": 0,
+     "meanDelay": 7.3,
+     "vehHours": 0.12,
+     "leftWaiting": 3,
      "cycle": null
     }
    ],

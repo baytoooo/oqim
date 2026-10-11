@@ -1,0 +1,89 @@
+{
+  "model": {
+    "name": "YOLOv8n fine-tuned on RDD2022 (4 classes)",
+    "source": "https://huggingface.co/dronefreak/rdd2022-yolov8n",
+    "file": "best.pt",
+    "sha256": "d1c3536d8e4a873b7ff251d1cb81c0047100f06c86f92e08596de2d618618a3e",
+    "licence": "AGPL-3.0 (stated on the model card)",
+    "trained_by": "dronefreak, DetectionBench (https://github.com/dronefreak/DetectionBench)",
+    "card_reports": {
+      "split": "full RDD2022 test split",
+      "map50": 0.588,
+      "map50_95": 0.3205,
+      "precision": 0.6203,
+      "recall": 0.5608
+    },
+    "browser_file": "/roads/model.onnx",
+    "input": 640
+  },
+  "dataset": {
+    "name": "RDD2022, 4-class CRDDC2022 taxonomy, YOLO export",
+    "source": "https://huggingface.co/datasets/dronefreak/RDD2022",
+    "original": "https://github.com/sekilab/RoadDamageDetector (Arya et al., arXiv:2209.08538)",
+    "licence": "CC BY-SA 4.0",
+    "split": "test",
+    "images": 300,
+    "instances": 437,
+    "note": "A 300-image sample of the test split (Japan, India, Czech, Norway, United States, China), not the whole split. Numbers on the full split will differ."
+  },
+  "method": {
+    "tool": "ultralytics 8.4.159 model.val",
+    "imgsz": 640,
+    "conf": 0.001,
+    "nms_iou": 0.7,
+    "match_iou": 0.5,
+    "precision_recall": "per class at the confidence that maximises mean F1 (ultralytics default)"
+  },
+  "overall": {
+    "map50": 0.66,
+    "map50_95": 0.387,
+    "precision": 0.663,
+    "recall": 0.591
+  },
+  "per_class": [
+    {
+      "class_id": 0,
+      "code": "D00",
+      "name": "Longitudinal crack",
+      "instances": 202,
+      "images": 105,
+      "precision": 0.662,
+      "recall": 0.594,
+      "ap50": 0.635,
+      "ap50_95": 0.353
+    },
+    {
+      "class_id": 1,
+      "code": "D10",
+      "name": "Transverse crack",
+      "instances": 99,
+      "images": 63,
+      "precision": 0.652,
+      "recall": 0.51,
+      "ap50": 0.586,
+      "ap50_95": 0.294
+    },
+    {
+      "class_id": 2,
+      "code": "D20",
+      "name": "Alligator crack",
+      "instances": 55,
+      "images": 43,
+      "precision": 0.691,
+      "recall": 0.6,
+      "ap50": 0.677,
+      "ap50_95": 0.422
+    },
+    {
+      "class_id": 3,
+      "code": "D40",
+      "name": "Pothole",
+      "instances": 81,
+      "images": 53,
+      "precision": 0.648,
+      "recall": 0.66,
+      "ap50": 0.744,
+      "ap50_95": 0.479
+    }
+  ]
+}

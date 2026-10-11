@@ -1,0 +1,152 @@
+---
+import Base from "../layouts/Base.astro";
+---
+<Base title="Road condition map" description="Potholes and cracks found in ordinary road photos, in your browser, with each photo on a map of Tashkent coloured by its worst damage, and the detector's accuracy measured on RDD2022." active="roads">
+  <section class="wrap rd-head">
+    <p class="kicker">Roads</p>
+    <h1>Road condition map</h1>
+    <p class="lede">Photos of the road surface, from phones that already ride along in cars, go through a road damage detector and land on a map. Each point takes the colour of the worst damage in its photo, and a pothole counts as worse than any crack. The detector runs in this browser: no photo is uploaded anywhere.</p>
+  </section>
+
+  <section class="wrap rd-step">
+    <div class="who-grid">
+      <div class="panel panel-pad">
+        <p class="k">Who uses it</p>
+        <p class="body"><b>The city road maintenance service</b> sees which streets have potholes and which have only cracks, and decides which street to repair first. <b>A fleet or taxi drivers</b> supply the photos: a phone on the dashboard takes one every few hundred metres, with its GPS position.</p>
+      </div>
+      <div class="panel panel-pad">
+        <p class="k">The decision</p>
+        <p class="body">Which street to repair first. The table under the map sorts the photos by their worst damage (pothole, then alligator, transverse and longitudinal cracks), then by how many damages were found. A crew would still look before repairing: the detector misses about 4 in 10 damages (see its accuracy below).</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap rd-step">
+    <div class="pick-grid">
+      <div class="panel panel-pad">
+        <p class="k">Six photos from the RDD2022 test split (taken in India, Japan, the United States, China, the Czech Republic and Norway; CC BY-SA 4.0). Each one is pinned to a <b>demo location</b> in Tashkent.</p>
+        <div class="samples" id="rd-samples"></div>
+      </div>
+      <div class="panel panel-pad">
+        <p class="k">Or your own photos of a road</p>
+        <label class="btn primary file-btn">
+          <input type="file" id="rd-file" accept="image/*" multiple />
+          Choose photos
+        </label>
+        <p class="hint">A photo with GPS in its EXIF goes on the map by itself. Otherwise click the map where it was taken.</p>
+      </div>
+    </div>
+
+    <div class="rd-grid">
+      <div class="frame-wrap"><canvas id="rd-canvas" width="1024" height="576" aria-label="The road photo with the damage the detector found, boxed and named"></canvas></div>
+      <div class="side">
+        <div class="panel panel-pad raised edge">
+          <p class="k">Found in this photo</p>
+          <ul class="found" id="rd-found"><li class="muted">Loading ...</li></ul>
+          <p class="hint" id="rd-where"></p>
+          <button class="btn ghost small" type="button" id="rd-place" hidden>Place it on the map</button>
+          <label class="hint chk"><input type="checkbox" id="rd-labels" checked /> Show the hand labels (dashed, samples only)</label>
+          <label class="hint chk"><input type="checkbox" id="rd-tiles" /> Also look at 4 tiles of the photo (for large phone photos; not part of the measured accuracy)</label>
+        </div>
+        <p class="status mono" id="rd-status" role="status"></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap rd-step">
+    <h2 class="rd-h2">Where to repair first</h2>
+    <p class="legend" id="rd-legend"></p>
+    <div class="map-grid">
+      <div class="map-wrap"><div id="rd-map" aria-label="Map of Tashkent with one point per photo, coloured by its worst damage"></div></div>
+      <div class="panel scroll-x">
+        <table class="t">
+          <thead><tr><th class="num">#</th><th>Photo</th><th>Where</th><th class="num" title="Pothole">D40</th><th class="num" title="Alligator crack">D20</th><th class="num" title="Transverse crack">D10</th><th class="num" title="Longitudinal crack">D00</th><th>Worst</th></tr></thead>
+          <tbody id="rd-table"></tbody>
+        </table>
+      </div>
+    </div>
+    <p class="hint" id="rd-map-note">The sample points are demo locations on real Tashkent streets, picked for this page: the photos were taken abroad. Numbers on the points are the repair order from the table. Map data &copy; OpenStreetMap contributors (ODbL), tiles by OpenFreeMap.</p>
+  </section>
+
+  <section class="wrap rd-step">
+    <h2 class="rd-h2">How accurate it is</h2>
+    <div class="stats">
+      <div class="stat"><div class="v" id="rd-map50">...</div><div class="l">mAP at IoU 0.5, four classes</div></div>
+      <div class="stat"><div class="v" id="rd-prec">...</div><div class="l">of boxes found, real damage of that class (precision)</div></div>
+      <div class="stat"><div class="v" id="rd-rec">...</div><div class="l">of hand-labelled damages, found (recall)</div></div>
+      <div class="stat"><div class="v" id="rd-n">...</div><div class="l">test images in the sample</div></div>
+    </div>
+    <div class="panel scroll-x tbl">
+      <table class="t">
+        <thead><tr><th>Class</th><th class="num">Images</th><th class="num">Damages</th><th class="num">Precision</th><th class="num">Recall</th><th class="num">AP50</th></tr></thead>
+        <tbody id="rd-eval-table"></tbody>
+      </table>
+    </div>
+    <p class="hint" id="rd-eval-note"></p>
+    <p class="hint">The page shows boxes above 25% confidence, so in the browser it finds fewer damages and makes fewer false calls than the recall above suggests. The photos in RDD2022 come from Japan, India, the Czech Republic, Norway, the United States and China; none is from Tashkent, and how well it works on Tashkent streets has not been measured. On the Norway sample, a 3650 px wide photo with 12 hand-labelled cracks, the offline run of the model matched 1 of them. The tiles option finds more boxes on photos like that one, but it has not been measured. In the Japan sample the two boxes called pothole sit on what look like round utility covers; the RDD2022 hand labels call them potholes too, so the measured numbers do not catch this kind of mistake.</p>
+    <p class="hint">Model: YOLOv8n fine-tuned on RDD2022 by dronefreak (<a href="https://github.com/dronefreak/DetectionBench" rel="noopener">DetectionBench</a>), file best.pt from <a href="https://huggingface.co/dronefreak/rdd2022-yolov8n" rel="noopener">huggingface.co/dronefreak/rdd2022-yolov8n</a>, licence <a href="https://www.gnu.org/licenses/agpl-3.0.html" rel="noopener">AGPL-3.0</a>. This page runs an ONNX export of it with NMS in the graph (samples_src/roads_eval.py), 12 MB; the evaluation used the same weights.</p>
+    <p class="hint">Dataset: RDD2022, D. Arya, H. Maeda, S. K. Ghosh, D. Toshniwal, Y. Sekimoto, "RDD2022: A multi-national image dataset for automatic road damage detection", <a href="https://arxiv.org/abs/2209.08538" rel="noopener">arXiv:2209.08538</a>. Licence <a href="https://creativecommons.org/licenses/by-sa/4.0/" rel="noopener">CC BY-SA 4.0</a>. Images and labels from the <a href="https://huggingface.co/datasets/dronefreak/RDD2022" rel="noopener">4-class YOLO copy on Hugging Face</a> of the <a href="https://github.com/sekilab/RoadDamageDetector" rel="noopener">official release</a>; the sample photos here are resized and recompressed.</p>
+  </section>
+</Base>
+
+<script>
+  import "../scripts/roads.ts";
+</script>
+
+<style>
+  .rd-head { padding-block: var(--sp-7) var(--sp-4); }
+  .rd-head h1 { font: 700 clamp(2.4rem, 5vw, 3.6rem)/1 var(--font-display); margin: var(--sp-2) 0 var(--sp-3); }
+  .rd-step { padding-block: var(--sp-4) var(--sp-6); }
+  .rd-h2 { font: 700 1.75rem/1.1 var(--font-display); margin: 0 0 var(--sp-4); }
+  .who-grid { display: grid; gap: var(--sp-4); grid-template-columns: 1fr; }
+  @media (min-width: 860px) { .who-grid { grid-template-columns: 1fr 1fr; } }
+  .body { margin: 0; color: var(--paint-2); line-height: 1.55; max-width: 70ch; }
+  .body b { color: var(--paint); }
+  .pick-grid { display: grid; gap: var(--sp-4); grid-template-columns: 1fr; margin-bottom: var(--sp-4); }
+  @media (min-width: 860px) { .pick-grid { grid-template-columns: 1.6fr 1fr; } }
+  .k { margin: 0 0 var(--sp-3); color: var(--muted); font-size: .875rem; }
+  .k b { color: var(--zebra); font-weight: 600; }
+  .hint { color: var(--muted); font-size: .875rem; margin: var(--sp-3) 0 0; max-width: 80ch; line-height: 1.5; }
+  .file-btn { position: relative; overflow: hidden; cursor: pointer; }
+  .file-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .samples { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+  .samples :global(.sample .mono) { color: var(--zebra); }
+  .samples :global(.sample[aria-pressed="true"]) { border-color: var(--zebra); background: var(--zebra-soft); }
+  .rd-grid { display: grid; gap: var(--sp-4); grid-template-columns: 1fr; }
+  @media (min-width: 960px) { .rd-grid { grid-template-columns: 2.2fr 1fr; } }
+  .frame-wrap { position: relative; background: var(--asphalt-0); border-radius: var(--r-3); overflow: hidden; box-shadow: var(--shadow-3); align-self: start; }
+  .frame-wrap canvas { display: block; width: 100%; height: auto; }
+  .found { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: .9375rem; color: var(--paint-2); }
+  .found :global(b) { color: var(--paint); font: 700 1.25rem/1 var(--font-display); }
+  .found :global(.muted), .t :global(.muted) { color: var(--muted); font-size: .8125rem; }
+  .chk { display: flex; gap: var(--sp-2); align-items: flex-start; cursor: pointer; }
+  .chk input { margin-top: 3px; }
+  #rd-place { margin-top: var(--sp-3); }
+  .status { color: var(--paint-2); font-size: .8125rem; min-height: 1.5em; margin-top: var(--sp-3); }
+  .legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; color: var(--muted); font-size: .8125rem; margin: 0 0 var(--sp-3); }
+  .legend :global(span) { display: inline-flex; align-items: center; gap: 6px; }
+  :global(.sw) { display: inline-block; width: 12px; height: 12px; border-radius: 50%; vertical-align: -1px; }
+  .map-grid { display: grid; gap: var(--sp-4); grid-template-columns: 1fr; }
+  @media (min-width: 1040px) { .map-grid { grid-template-columns: 1fr 1.15fr; } }
+  .map-wrap { border-radius: var(--r-3); overflow: hidden; box-shadow: var(--shadow-3); background: var(--asphalt-0); }
+  #rd-map { height: 460px; width: 100%; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: var(--sp-3); margin-bottom: var(--sp-3); }
+  .stat { background: var(--asphalt-2); border: 1px solid var(--line); border-radius: var(--r-3); padding: var(--sp-3) var(--sp-4); }
+  .stat .v { font: 700 2rem/1 var(--font-display); }
+  .stat .l { color: var(--muted); font-size: .8125rem; margin-top: 4px; }
+  .tbl { margin-top: var(--sp-4); }
+  .scroll-x { overflow-x: auto; }
+  table.t { width: 100%; border-collapse: collapse; font-size: .875rem; }
+  table.t :global(th), table.t :global(td) { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.t :global(th) { color: var(--muted); font-weight: 600; font-size: .8125rem; background: var(--asphalt-0); }
+  table.t :global(th.num), table.t :global(td.num) { font-family: var(--font-mono); text-align: right; white-space: nowrap; }
+  table.t :global(tr.sel td) { background: var(--zebra-faint); }
+  .t :global(.tag) { display: inline-block; font-size: .6875rem; text-transform: uppercase; letter-spacing: .04em; color: var(--zebra); border: 1px solid rgba(243, 195, 22, .45); border-radius: var(--r-1); padding: 0 4px; margin-left: 4px; white-space: nowrap; }
+  .t :global(.linkish) { background: none; border: 0; padding: 0; color: var(--paint); font: inherit; text-decoration: underline; text-decoration-color: var(--line-2); cursor: pointer; text-align: left; }
+  .t :global(.linkish:hover) { color: var(--zebra); }
+</style>
+
+<style is:global>
+  @import "maplibre-gl/dist/maplibre-gl.css";
+  .maplibregl-ctrl-attrib { font-size: 11px; }
+</style>
