@@ -1,0 +1,65 @@
+[
+ {
+  "name": "Car park near Lawn Lane",
+  "lat": 51.484,
+  "lon": -0.120764,
+  "capacity": 17,
+  "capacitySource": "OSM capacity tag",
+  "osm": "way/1161776679",
+  "areaM2": 228,
+  "distanceM": 349,
+  "tags": {
+   "amenity": "parking",
+   "capacity": "17"
+  },
+  "source": "OpenStreetMap contributors, ODbL 1.0, Overpass query of 2026-10-11 (data as of 05:44 UTC)"
+ },
+ {
+  "name": "Car park on South Lambeth Road",
+  "lat": 51.483181,
+  "lon": -0.123906,
+  "capacity": 15,
+  "capacitySource": "OSM capacity tag",
+  "osm": "way/1161776690",
+  "areaM2": 596,
+  "distanceM": 549,
+  "tags": {
+   "amenity": "parking",
+   "capacity": "15"
+  },
+  "source": "OpenStreetMap contributors, ODbL 1.0, Overpass query of 2026-10-11 (data as of 05:44 UTC)"
+ },
+ {
+  "name": "Car park on Cowley Road",
+  "lat": 51.476895,
+  "lon": -0.110126,
+  "capacity": 6,
+  "capacitySource": "OSM capacity tag",
+  "osm": "way/1117236639",
+  "areaM2": 86,
+  "distanceM": 792,
+  "tags": {
+   "access": "yes",
+   "amenity": "parking",
+   "capacity": "6",
+   "fee": "yes",
+   "parking": "surface",
+   "surface": "asphalt"
+  },
+  "source": "OpenStreetMap contributors, ODbL 1.0, Overpass query of 2026-10-11 (data as of 05:44 UTC)"
+ },
+ {
+  "name": "Car park near Royal Road",
+  "lat": 51.482754,
+  "lon": -0.103395,
+  "capacity": 37,
+  "capacitySource": "estimated: no capacity tag, OSM outline 930 m2 at 25 m2 per space",
+  "osm": "way/1185049903",
+  "areaM2": 930,
+  "distanceM": 874,
+  "tags": {
+   "amenity": "parking"
+  },
+  "source": "OpenStreetMap contributors, ODbL 1.0, Overpass query of 2026-10-11 (data as of 05:44 UTC)"
+ }
+]

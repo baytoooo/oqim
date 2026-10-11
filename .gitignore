@@ -6,3 +6,7 @@ dist/
 app/public/ffmpeg/
 samples_src/*.json
 samples_src/*.png
+samples_src/london/
+samples_src/hongkong/
+samples_src/*.raw
+samples_src/parking/

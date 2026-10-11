@@ -1,0 +1,81 @@
+---
+import Base from "../layouts/Base.astro";
+---
+<Base title="District model" description="Traffic cameras and live car park vacancy of one district: the load on each road now and in 10 minutes, and drivers sent to car parks on routes that take the other drivers into account." active="city">
+  <section class="wrap head">
+    <p class="kicker">District model</p>
+    <h1>Kwun Tong, Hong Kong: cameras, car parks and routes</h1>
+    <p class="lede">The Transport Department of Hong Kong publishes its traffic cameras and the free spaces of car parks, live. OQIM counts the vehicles on every camera, forecasts the load 10 minutes ahead, and sends drivers looking for parking to the car park and route that cost least, counting the drivers it has already sent, so it does not make a new jam or fill one car park while the next one stands empty.</p>
+  </section>
+  <section class="wrap">
+    <div class="map-wrap">
+      <div id="map" aria-label="Map of Kwun Tong with cameras, car parks, road load and routes"></div>
+      <div class="map-bar"><span id="status">Loading</span></div>
+      <div class="legend">
+        <span><i style="background:#3fd27f"></i>free</span><span><i style="background:#ffb224"></i>busy</span><span><i style="background:#ff5b4c"></i>jammed</span>
+      </div>
+    </div>
+    <div class="grid">
+      <div class="panel panel-pad">
+        <p class="k">Drivers looking for parking</p>
+        <div class="row">
+          <label>Drivers <input id="n" type="range" min="10" max="120" step="10" value="60" /> <span class="mono" id="n-out">60</span></label>
+          <label>Over <select id="window"><option value="5">5 min</option><option value="10" selected>10 min</option><option value="20">20 min</option></select></label>
+        </div>
+        <div class="row">
+          <label>Road load <select id="when"><option value="now">now</option><option value="ahead" selected>forecast, 10 min ahead</option></select></label>
+        </div>
+        <p class="hint">Click the map to move the destination (yellow pin). Drivers set off from the edges of the district.</p>
+        <div class="row" role="group" aria-label="Strategy">
+          <button class="btn mode" type="button" data-mode="nearest" aria-pressed="false">Everyone to the nearest car park</button>
+          <button class="btn mode" type="button" data-mode="oqim" aria-pressed="true">OQIM: spread by cost</button>
+        </div>
+        <div id="kpi"></div>
+      </div>
+      <div class="panel panel-pad">
+        <p class="k">Selected camera</p>
+        <div id="camera"><p class="hint">Click a camera (circle) on the map.</p></div>
+        <p class="k mt">Car parks near the destination</p>
+        <div id="parks"></div>
+      </div>
+    </div>
+    <p class="hint notes" id="notes"></p>
+  </section>
+</Base>
+
+<script>
+  import "../scripts/city.ts";
+</script>
+
+<style>
+  .head { padding-block: var(--sp-7) var(--sp-4); }
+  .head h1 { font: 700 clamp(2rem, 4.6vw, 3.2rem)/1.02 var(--font-display); margin: var(--sp-2) 0 var(--sp-3); }
+  .map-wrap { position: relative; border-radius: var(--r-3); overflow: hidden; box-shadow: var(--shadow-3); background: var(--asphalt-0); }
+  #map { width: 100%; height: min(70vh, 700px); }
+  .map-bar { position: absolute; left: 12px; top: 12px; background: rgba(13, 14, 16, .85); color: var(--paint); padding: 6px 10px; border-radius: var(--r-2); font-size: .875rem; }
+  .legend { position: absolute; left: 12px; bottom: 30px; display: flex; gap: 10px; background: rgba(13, 14, 16, .85); color: var(--paint-2); padding: 6px 10px; border-radius: var(--r-2); font-size: .8125rem; }
+  .legend i { display: inline-block; width: 18px; height: 4px; margin-right: 5px; vertical-align: middle; border-radius: 2px; }
+  .grid { display: grid; gap: var(--sp-4); grid-template-columns: 1fr; margin-top: var(--sp-4); }
+  @media (min-width: 960px) { .grid { grid-template-columns: 1.2fr 1fr; } }
+  .k { margin: 0 0 var(--sp-3); color: var(--muted); font-size: .875rem; }
+  .k.mt { margin-top: var(--sp-5); }
+  .row { display: flex; flex-wrap: wrap; gap: var(--sp-3); align-items: center; margin-bottom: var(--sp-3); color: var(--paint-2); font-size: .9rem; }
+  .row label { display: flex; gap: 6px; align-items: center; }
+  select { background: var(--asphalt-3); color: var(--paint); border: 1px solid var(--line-2); border-radius: var(--r-1); padding: 4px 6px; font: inherit; }
+  .mode[aria-pressed="true"] { background: var(--zebra); border-color: var(--zebra); color: var(--ink); }
+  .hint { color: var(--muted); font-size: .875rem; margin: var(--sp-2) 0 var(--sp-3); }
+  .notes { max-width: 115ch; margin-block: var(--sp-4) var(--sp-7); }
+</style>
+
+<style is:global>
+  @import "maplibre-gl/dist/maplibre-gl.css";
+  table.t { width: 100%; border-collapse: collapse; font-size: .875rem; }
+  table.t th, table.t td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  table.t th { color: var(--muted); font-weight: 600; font-size: .78rem; background: var(--asphalt-0); }
+  table.t td.num { font-family: var(--font-mono); text-align: right; }
+  .good { color: var(--sig-green); }
+  .bad { color: var(--sig-red); }
+  #camera img { width: 100%; border-radius: var(--r-2); display: block; }
+  #camera .spark { width: 100%; height: 48px; display: block; margin-top: 6px; }
+  .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
+</style>

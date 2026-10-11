@@ -1,0 +1,258 @@
+{
+ "source": "Transport Department, Hong Kong SAR Government: car park information and vacancy (private cars), via DATA.GOV.HK",
+ "fetched": "2026-10-11T05:45Z",
+ "carparks": [
+  {
+   "id": "12",
+   "name": "Amoy Plaza",
+   "lat": 22.32470074,
+   "lon": 114.21675324,
+   "capacity": 389,
+   "vacancy": 29,
+   "lastupdate": "2026-10-08 16:40:46"
+  },
+  {
+   "id": "30",
+   "name": "Telford Plaza D Carpark",
+   "lat": 22.32228903,
+   "lon": 114.21204329,
+   "capacity": 70,
+   "vacancy": 0,
+   "lastupdate": "2026-10-11 13:27:30"
+  },
+  {
+   "id": "31",
+   "name": "Telford Plaza I Carpark",
+   "lat": 22.32268602,
+   "lon": 114.21353459,
+   "capacity": 170,
+   "vacancy": 0,
+   "lastupdate": "2026-10-11 13:41:00"
+  },
+  {
+   "id": "32",
+   "name": "Telford Plaza II Carpark",
+   "lat": 22.32135609,
+   "lon": 114.21326637,
+   "capacity": 94,
+   "vacancy": 2,
+   "lastupdate": "2026-10-11 13:41:00"
+  },
+  {
+   "id": "37",
+   "name": "Manhattan Place Carpark",
+   "lat": 22.31994674,
+   "lon": 114.21005309,
+   "capacity": 45,
+   "vacancy": 45,
+   "lastupdate": "2026-10-11 03:02:58"
+  },
+  {
+   "id": "75",
+   "name": "Landmark East Carpark",
+   "lat": 22.31267152,
+   "lon": 114.22228396,
+   "capacity": 51,
+   "vacancy": 43,
+   "lastupdate": "2026-10-11 13:41:13"
+  },
+  {
+   "id": "77",
+   "name": "Kingston International Center",
+   "lat": 22.32361547,
+   "lon": 114.20924917,
+   "capacity": 120,
+   "vacancy": 74,
+   "lastupdate": "2026-10-11 13:38:30"
+  },
+  {
+   "id": "79",
+   "name": "NEO",
+   "lat": 22.31411072,
+   "lon": 114.21644211,
+   "capacity": 182,
+   "vacancy": 40,
+   "lastupdate": "2026-10-11 11:59:29"
+  },
+  {
+   "id": "81",
+   "name": "Manulife Place",
+   "lat": 22.3149246,
+   "lon": 114.21706438,
+   "capacity": 80,
+   "vacancy": 75,
+   "lastupdate": "2026-10-08 09:29:21"
+  },
+  {
+   "id": "93",
+   "name": "Hong Ning Road Park Car Park",
+   "lat": 22.32070104,
+   "lon": 114.22477841,
+   "capacity": 16,
+   "vacancy": 3,
+   "lastupdate": "2026-10-11 13:37:30"
+  },
+  {
+   "id": "102",
+   "name": "The ANGLE",
+   "lat": 22.3131996,
+   "lon": 114.2205472,
+   "capacity": 340,
+   "vacancy": 121,
+   "lastupdate": "2026-10-11 13:40:30"
+  },
+  {
+   "id": "103",
+   "name": "One Sky Parc (Wilson Parking)",
+   "lat": 22.3111392,
+   "lon": 114.2223215,
+   "capacity": 53,
+   "vacancy": 21,
+   "lastupdate": "2026-10-11 13:40:20"
+  },
+  {
+   "id": "121",
+   "name": "On Kay Court Car Park",
+   "lat": 22.32188211,
+   "lon": 114.21692491,
+   "capacity": 27,
+   "vacancy": 22,
+   "lastupdate": "2026-10-11 00:48:40"
+  },
+  {
+   "id": "123",
+   "name": "KTR350 Car Park",
+   "lat": 22.3150437,
+   "lon": 114.2179817,
+   "capacity": 142,
+   "vacancy": 47,
+   "lastupdate": "2026-10-11 13:15:30"
+  },
+  {
+   "id": "tdc14p6639",
+   "name": "Lok Wah South Car Park",
+   "lat": 22.320472785448,
+   "lon": 114.22074394572,
+   "capacity": null,
+   "vacancy": 30,
+   "lastupdate": "2026-10-11 13:43:02"
+  },
+  {
+   "id": "tdc14p6640",
+   "name": "Lok Wah North Car Park A",
+   "lat": 22.321666438091,
+   "lon": 114.2198968135,
+   "capacity": null,
+   "vacancy": 0,
+   "lastupdate": "2026-10-11 13:43:02"
+  },
+  {
+   "id": "tdc14p6641",
+   "name": "Lok Wah North Car Park B",
+   "lat": 22.322172634147,
+   "lon": 114.21993174565,
+   "capacity": null,
+   "vacancy": 30,
+   "lastupdate": "2026-10-11 13:43:02"
+  },
+  {
+   "id": "tdc349p1",
+   "name": "Jordan Valley Swimming Pool",
+   "lat": 22.32326476097,
+   "lon": 114.21800963743,
+   "capacity": null,
+   "vacancy": 4,
+   "lastupdate": "2026-10-11 13:42:05"
+  },
+  {
+   "id": "tdc14p6643",
+   "name": "Upper Ngau Tau Kok Car Park",
+   "lat": 22.318479858619,
+   "lon": 114.21753551429,
+   "capacity": null,
+   "vacancy": 30,
+   "lastupdate": "2026-10-11 13:43:02"
+  },
+  {
+   "id": "tdc108p1",
+   "name": "Kingston International Centre",
+   "lat": 22.32361496,
+   "lon": 114.20927848,
+   "capacity": null,
+   "vacancy": 75,
+   "lastupdate": "2026-10-11 13:42:46"
+  },
+  {
+   "id": "tdc53p3",
+   "name": "Hong Ning Road Park",
+   "lat": 22.320614693957,
+   "lon": 114.2246607586,
+   "capacity": null,
+   "vacancy": 5,
+   "lastupdate": "2026-10-11 13:42:12"
+  },
+  {
+   "id": "tdc351p1",
+   "name": "Jordan Valley Playground",
+   "lat": 22.325107341011,
+   "lon": 114.21908730535,
+   "capacity": null,
+   "vacancy": 11,
+   "lastupdate": "2026-10-11 13:42:32"
+  },
+  {
+   "id": "tdc25p46",
+   "name": "Yue Man Square",
+   "lat": 22.31448297,
+   "lon": 114.22489295,
+   "capacity": null,
+   "vacancy": 11,
+   "lastupdate": "2026-10-11 13:42:19"
+  },
+  {
+   "id": "tdc130p1",
+   "name": "Lower ngau tau kok estate Car Park",
+   "lat": 22.321261262744,
+   "lon": 114.21489167983,
+   "capacity": null,
+   "vacancy": 0,
+   "lastupdate": "2026-10-11 13:06:38"
+  },
+  {
+   "id": "tdc177p1",
+   "name": "KTR350 Car Park",
+   "lat": 22.315039030955,
+   "lon": 114.21800031701,
+   "capacity": null,
+   "vacancy": 47,
+   "lastupdate": "2026-10-11 13:41:18"
+  },
+  {
+   "id": "tdc314p1",
+   "name": "THE CENDAS Carpark",
+   "lat": 22.322145511398,
+   "lon": 114.20993789706,
+   "capacity": null,
+   "vacancy": 76,
+   "lastupdate": "2026-10-11 13:41:43"
+  },
+  {
+   "id": "tdc332p1",
+   "name": "apm Car Park",
+   "lat": 22.312312273115,
+   "lon": 114.22514827149,
+   "capacity": null,
+   "vacancy": 15,
+   "lastupdate": "2026-10-11 13:42:40"
+  },
+  {
+   "id": "tdc336p1",
+   "name": "The ANGLE Car Park",
+   "lat": 22.312864055788,
+   "lon": 114.22089692406,
+   "capacity": null,
+   "vacancy": 119,
+   "lastupdate": "2026-10-11 13:42:34"
+  }
+ ]
+}
