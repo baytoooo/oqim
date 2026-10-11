@@ -1,0 +1,78 @@
+---
+import Base from "../layouts/Base.astro";
+---
+<Base title="Corridor in 3D" description="The vehicles from your video, driven through up to five signalised junctions of Tashkent in 3D: the timing now against OQIM's plan with a green wave." active="network">
+  <section class="wrap net-head">
+    <p class="kicker">Simulation</p>
+    <h1>A corridor of Tashkent in 3D</h1>
+    <p class="lede">Click up to five signalised junctions along a road, in the order you drive. The middle one stands for the junction of your video: the vehicles measured there drive the whole corridor, two junctions before it and two after, under the timing now and under OQIM's plan.</p>
+  </section>
+  <section class="wrap">
+    <div class="map-wrap">
+      <div id="map" aria-label="3D map of Tashkent with the corridor and its vehicles"></div>
+      <div class="map-bar">
+        <span class="mono" id="clock">0:00</span>
+        <span id="live"></span>
+      </div>
+    </div>
+    <div class="net-grid">
+      <div class="panel panel-pad">
+        <p class="k">Junctions <span id="count">0 of 5</span></p>
+        <ol id="picked" class="picked"></ol>
+        <div class="row">
+          <button class="btn" type="button" id="sample">Sample corridor</button>
+          <button class="btn ghost" type="button" id="clear">Clear</button>
+        </div>
+        <p class="hint" id="demand-note"></p>
+      </div>
+      <div class="panel panel-pad">
+        <p class="k">Watch</p>
+        <div class="row" role="group" aria-label="Signal timing">
+          <button class="btn mode" type="button" data-mode="now" aria-pressed="true">Timing now</button>
+          <button class="btn mode" type="button" data-mode="oqim" aria-pressed="false">OQIM plan + green wave</button>
+        </div>
+        <div class="row" role="group" aria-label="Speed">
+          <button class="btn ghost" type="button" id="play">Pause</button>
+          <label class="speed">Speed <select id="speed"><option value="1">1x</option><option value="4" selected>4x</option><option value="10">10x</option></select></label>
+          <button class="btn ghost" type="button" id="restart">Restart</button>
+        </div>
+        <div id="kpi"></div>
+      </div>
+    </div>
+    <p class="hint notes" id="notes">Simulation, not a measurement. The vehicles are the ones measured on the video (repeated to fill 10 minutes); they enter upstream so that, at free flow, they reach the middle junction when they reached the stop line on the video, and they follow the Intelligent Driver Model (Treiber et al. 2000) at up to 50 km/h. Timing now: every junction runs the cycle and green measured on the video; the real offsets between junctions are unknown, so each starts its cycle at a fixed pseudo-random time. OQIM: the searched plan from the audit at every junction, offsets for a green wave at 45 km/h. One direction only; cross streets are not simulated. Roads and junctions: OpenStreetMap contributors (ODbL 1.0). Map: OpenFreeMap, OpenMapTiles.</p>
+  </section>
+</Base>
+
+<script>
+  import "../scripts/network.ts";
+</script>
+
+<style>
+  .net-head { padding-block: var(--sp-7) var(--sp-4); }
+  .net-head h1 { font: 700 clamp(2.2rem, 5vw, 3.4rem)/1 var(--font-display); margin: var(--sp-2) 0 var(--sp-3); }
+  .map-wrap { position: relative; border-radius: var(--r-3); overflow: hidden; box-shadow: var(--shadow-3); background: var(--asphalt-0); }
+  #map { width: 100%; height: min(72vh, 720px); }
+  .map-bar { position: absolute; left: 12px; top: 12px; display: flex; gap: 12px; align-items: center; background: rgba(13, 14, 16, .82); color: var(--paint); padding: 6px 10px; border-radius: var(--r-2); font-size: .875rem; }
+  .net-grid { display: grid; gap: var(--sp-4); grid-template-columns: 1fr; margin-top: var(--sp-4); }
+  @media (min-width: 900px) { .net-grid { grid-template-columns: 1fr 1.4fr; } }
+  .k { margin: 0 0 var(--sp-3); color: var(--muted); font-size: .875rem; }
+  .row { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; margin-bottom: var(--sp-3); }
+  .mode[aria-pressed="true"] { background: var(--zebra); border-color: var(--zebra); color: var(--ink); }
+  .speed { color: var(--muted); font-size: .875rem; display: flex; gap: 6px; align-items: center; }
+  select { background: var(--asphalt-3); color: var(--paint); border: 1px solid var(--line-2); border-radius: var(--r-1); padding: 4px 6px; font: inherit; }
+  .picked { margin: 0 0 var(--sp-3); padding-left: 1.4em; color: var(--paint-2); font-size: .9375rem; min-height: 1.5em; }
+  .picked li.mid { color: var(--zebra); }
+  .hint { color: var(--muted); font-size: .875rem; margin: var(--sp-3) 0 0; }
+  .notes { max-width: 110ch; margin-block: var(--sp-4) var(--sp-7); }
+</style>
+
+<style is:global>
+  @import "maplibre-gl/dist/maplibre-gl.css";
+  table.t { width: 100%; border-collapse: collapse; font-size: .9rem; }
+  table.t th, table.t td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  table.t th { color: var(--muted); font-weight: 600; font-size: .8125rem; background: var(--asphalt-0); }
+  table.t td.num { font-family: var(--font-mono); text-align: right; }
+  .good { color: var(--sig-green); }
+  .bad { color: var(--sig-red); }
+  .maplibregl-ctrl-attrib { font-size: 11px; }
+</style>

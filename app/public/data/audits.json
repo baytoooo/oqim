@@ -31,7 +31,7 @@
     },
     {
      "key": "webster",
-     "label": "Webster plan",
+     "label": "Webster formula (1958)",
      "meanDelay": 12.3,
      "vehHours": 0.441,
      "leftWaiting": 6,
@@ -39,11 +39,11 @@
     },
     {
      "key": "tuned",
-     "label": "Tuned fixed plan",
-     "meanDelay": 9.4,
-     "vehHours": 0.337,
+     "label": "Searched fixed plan",
+     "meanDelay": 7.2,
+     "vehHours": 0.259,
      "leftWaiting": 0,
-     "cycle": 75.1
+     "cycle": 75
     },
     {
      "key": "actuated",
@@ -54,10 +54,18 @@
      "cycle": null
     },
     {
+     "key": "maxpressure",
+     "label": "Max-pressure",
+     "meanDelay": 14.7,
+     "vehHours": 0.526,
+     "leftWaiting": 6,
+     "cycle": null
+    },
+    {
      "key": "predictive",
      "label": "OQIM predictive",
-     "meanDelay": 9.1,
-     "vehHours": 0.325,
+     "meanDelay": 6.8,
+     "vehHours": 0.245,
      "leftWaiting": 0,
      "cycle": null
     }
@@ -99,7 +107,7 @@
     },
     {
      "key": "webster",
-     "label": "Webster plan",
+     "label": "Webster formula (1958)",
      "meanDelay": 13.3,
      "vehHours": 0.468,
      "leftWaiting": 0,
@@ -107,9 +115,9 @@
     },
     {
      "key": "tuned",
-     "label": "Tuned fixed plan",
-     "meanDelay": 9.4,
-     "vehHours": 0.332,
+     "label": "Searched fixed plan",
+     "meanDelay": 5.6,
+     "vehHours": 0.199,
      "leftWaiting": 0,
      "cycle": 75
     },
@@ -122,10 +130,18 @@
      "cycle": null
     },
     {
+     "key": "maxpressure",
+     "label": "Max-pressure",
+     "meanDelay": 6.5,
+     "vehHours": 0.229,
+     "leftWaiting": 0,
+     "cycle": null
+    },
+    {
      "key": "predictive",
      "label": "OQIM predictive",
-     "meanDelay": 8.7,
-     "vehHours": 0.308,
+     "meanDelay": 5.7,
+     "vehHours": 0.202,
      "leftWaiting": 0,
      "cycle": null
     }
@@ -167,7 +183,7 @@
     },
     {
      "key": "webster",
-     "label": "Webster plan",
+     "label": "Webster formula (1958)",
      "meanDelay": 16.6,
      "vehHours": 0.778,
      "leftWaiting": 25,
@@ -175,11 +191,11 @@
     },
     {
      "key": "tuned",
-     "label": "Tuned fixed plan",
-     "meanDelay": 13.2,
-     "vehHours": 0.618,
-     "leftWaiting": 1,
-     "cycle": 80.1
+     "label": "Searched fixed plan",
+     "meanDelay": 7.9,
+     "vehHours": 0.37,
+     "leftWaiting": 0,
+     "cycle": 120
     },
     {
      "key": "actuated",
@@ -190,10 +206,18 @@
      "cycle": null
     },
     {
+     "key": "maxpressure",
+     "label": "Max-pressure",
+     "meanDelay": 28.4,
+     "vehHours": 1.332,
+     "leftWaiting": 22,
+     "cycle": null
+    },
+    {
      "key": "predictive",
      "label": "OQIM predictive",
-     "meanDelay": 13,
-     "vehHours": 0.613,
+     "meanDelay": 8,
+     "vehHours": 0.376,
      "leftWaiting": 0,
      "cycle": null
     }
@@ -235,7 +259,7 @@
     },
     {
      "key": "webster",
-     "label": "Webster plan",
+     "label": "Webster formula (1958)",
      "meanDelay": 13,
      "vehHours": 0.213,
      "leftWaiting": 0,
@@ -243,11 +267,11 @@
     },
     {
      "key": "tuned",
-     "label": "Tuned fixed plan",
-     "meanDelay": 7.2,
-     "vehHours": 0.119,
-     "leftWaiting": 2,
-     "cycle": 90
+     "label": "Searched fixed plan",
+     "meanDelay": 6.6,
+     "vehHours": 0.108,
+     "leftWaiting": 0,
+     "cycle": 150
     },
     {
      "key": "actuated",
@@ -258,11 +282,19 @@
      "cycle": null
     },
     {
+     "key": "maxpressure",
+     "label": "Max-pressure",
+     "meanDelay": 8.4,
+     "vehHours": 0.137,
+     "leftWaiting": 6,
+     "cycle": null
+    },
+    {
      "key": "predictive",
      "label": "OQIM predictive",
-     "meanDelay": 7.3,
-     "vehHours": 0.119,
-     "leftWaiting": 3,
+     "meanDelay": 6.6,
+     "vehHours": 0.108,
+     "leftWaiting": 0,
      "cycle": null
     }
    ],

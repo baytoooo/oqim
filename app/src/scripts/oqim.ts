@@ -365,6 +365,11 @@ function finish(result: ClipResult): void {
     duration: result.duration,
   });
   lastAudit = a;
+  try {
+    sessionStorage.setItem("oqim:last", JSON.stringify(networkInput(a, result)));
+  } catch {
+    /* private mode: the network page falls back to the sample */
+  }
   show("running", false);
   show("report");
   renderReport(a, result);
@@ -473,12 +478,22 @@ function setupVideo(a: Audit, r: ClipResult): void {
   if (r.video) v.src = r.video;
   const frames = r.overlay?.frames ?? [];
   const paint = () => {
-    const rect = v.getBoundingClientRect();
-    ov.width = Math.round(rect.width);
-    ov.height = Math.round(rect.height);
+    // the canvas covers the picture exactly: the video's box, minus letterboxing, at device pixels
+    const bw = v.clientWidth, bh = v.clientHeight;
+    const vw = v.videoWidth || work[0], vh = v.videoHeight || work[1];
+    const scale = Math.min(bw / vw, bh / vh);
+    const pw = vw * scale, ph = vh * scale;
+    const dpr = window.devicePixelRatio || 1;
+    ov.style.left = `${(bw - pw) / 2}px`;
+    ov.style.top = `${(bh - ph) / 2}px`;
+    ov.style.width = `${pw}px`;
+    ov.style.height = `${ph}px`;
+    ov.width = Math.round(pw * dpr);
+    ov.height = Math.round(ph * dpr);
     const g = ov.getContext("2d")!;
-    g.clearRect(0, 0, ov.width, ov.height);
-    const k = ov.width / work[0];
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, pw, ph);
+    const k = pw / work[0];
     const t = v.currentTime;
     // the analysed frame nearest t
     let lo = 0, hi = frames.length - 1;
@@ -515,6 +530,14 @@ function setupVideo(a: Audit, r: ClipResult): void {
   v.ontimeupdate = paint;
   v.onseeked = paint;
   v.onloadeddata = paint;
+  const rvfc = (v as HTMLVideoElement & { requestVideoFrameCallback?: (cb: () => void) => number }).requestVideoFrameCallback;
+  if (rvfc) {
+    const loop = () => {
+      paint();
+      rvfc.call(v, loop);
+    };
+    rvfc.call(v, loop);
+  }
   window.addEventListener("resize", paint);
 }
 
@@ -550,3 +573,26 @@ $("export").addEventListener("click", () => {
   link.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 });
+
+/** What the 3D corridor page (src/scripts/network.ts) needs from an audit: the first approach's
+ * measured arrivals (as gaps), its lights and the plans, and each vehicle's class. */
+function networkInput(a: Audit, r: ClipResult) {
+  const ap = a.approaches[0];
+  const byTrack = new Map<number, number>();
+  for (const f of r.overlay?.frames ?? []) for (const b of f.boxes) if (!byTrack.has(b[4])) byTrack.set(b[4], b[5]);
+  const tuned = a.modes.find((m) => m.key === "tuned");
+  const pred = a.modes.find((m) => m.key === "predictive");
+  return {
+    clip: r.clip,
+    duration: a.duration,
+    approach: ap?.name ?? "",
+    arrivals: (ap?.crossings ?? []).map((c) => ({ t: c.arrival, cls: byTrack.get(c.track) ?? 2 })).sort((x, y) => x.t - y.t),
+    cycle: a.cycle ?? 90,
+    green: ap?.greenMean ?? 30,
+    headway: ap?.headway ?? 2,
+    tunedCycle: tuned?.cycle ?? a.cycle ?? 90,
+    tunedGreen: tuned?.greens?.[0] ?? ap?.greenMean ?? 30,
+    nowWait: a.modes[0].sim.meanDelay,
+    predictiveWait: pred?.sim.meanDelay ?? null,
+  };
+}

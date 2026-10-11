@@ -41,7 +41,7 @@ export interface ApproachAudit {
 }
 
 export interface ModeResult {
-  key: "measured" | "webster" | "tuned" | "actuated" | "predictive";
+  key: "measured" | "webster" | "tuned" | "actuated" | "maxpressure" | "predictive";
   label: string;
   note: string;
   sim: SimResult;
@@ -289,22 +289,38 @@ export function audit(input: AuditInput): Audit {
     const sim = run({ kind: "fixed", ...cur });
     if (sim.vehHours < best.sim.vehHours - 1e-9) best = { C: cycle, ...cur, sim };
   }
-  for (let C = DEFAULTS.minCycle; C <= DEFAULTS.maxCycle; C += 5) {
-    const p = plan(C);
-    const sim = run({ kind: "fixed", ...p });
-    if (sim.vehHours < best.sim.vehHours - 1e-9) best = { C, ...p, sim };
-  }
+  // search: every cycle from 40 to 150 s, the green split by demand raised to a power (sharper or
+  // flatter than Webster's) and the time of the phases out of view scaled up or down
+  const shaped = (C: number, power: number, hiddenScale: number) => {
+    const hid = hidden > 0 ? hiddenLost + Math.max(0, C - lost) * (yHidden / Math.max(1e-6, Y)) * hiddenScale : 0;
+    const effective = Math.max(0, C - lost - (hid > 0 ? hid - hiddenLost : 0));
+    const wts = yObs.map((v) => Math.pow(Math.max(1e-6, v), power));
+    const tot = wts.reduce((a, b) => a + b, 0);
+    const greens = order.map((_, o) => Math.max(DEFAULTS.minGreen, (effective * wts[o]) / tot + startups[o]));
+    return { greens, hidden: hid };
+  };
+  let tried = 0;
+  for (let C = DEFAULTS.minCycle; C <= DEFAULTS.maxCycle; C += 5)
+    for (const power of order.length > 1 ? [0.5, 1, 1.5] : [1])
+      for (const hs of hidden > 0 ? [0.7, 0.85, 1, 1.15, 1.3] : [1]) {
+        const p = shaped(C, power, hs);
+        const sim = run({ kind: "fixed", ...p });
+        tried++;
+        if (sim.vehHours < best.sim.vehHours - 1e-9) best = { C, ...p, sim };
+      }
   const maxGreen = Math.max(30, ...best.greens.map((g) => 1.6 * g));
   const actuated = run({ kind: "actuated", min: DEFAULTS.minGreen, max: maxGreen, gap: 3 });
+  const pressure = run({ kind: "maxpressure", min: DEFAULTS.minGreen, max: maxGreen, step: 5, hidden: best.hidden });
   const predictive = run({ kind: "predictive", min: DEFAULTS.minGreen, max: maxGreen, horizon: 30, greens: best.greens, hidden: best.hidden });
 
   const sum = (g: number[], hid: number) => g.reduce((s, v) => s + v, 0) + order.length * intergreen + hid;
   const modes: ModeResult[] = [
     { key: "measured", label: "Now", note: "the lights as read from the video", sim: measured, cycle: cycle ?? undefined },
-    { key: "webster", label: "Webster plan", note: "Webster's cycle and split for the measured demand", sim: webster, greens: w.greens, cycle: sum(w.greens, w.hidden) },
-    { key: "tuned", label: "Tuned fixed plan", note: "the fixed plan that loses least on this clip", sim: best.sim, greens: best.greens, cycle: sum(best.greens, best.hidden) },
-    { key: "actuated", label: "Actuated", note: "green held while vehicles keep coming (3 s gap)", sim: actuated },
-    { key: "predictive", label: "OQIM predictive", note: "starts from the tuned plan and, each second, ends or holds the green by the next 30 s of arrivals (in the field: the camera upstream)", sim: predictive },
+    { key: "webster", label: "Webster formula (1958)", note: "the textbook cycle and split for the measured demand", sim: webster, greens: w.greens, cycle: sum(w.greens, w.hidden) },
+    { key: "tuned", label: "Searched fixed plan", note: `the best of ${tried + 2} fixed plans (cycle 40 to 150 s, split and the phases out of view varied) replayed on this clip`, sim: best.sim, greens: best.greens, cycle: sum(best.greens, best.hidden) },
+    { key: "actuated", label: "Actuated", note: "green held while vehicles keep coming (3 s gap), as a loop detector controller", sim: actuated },
+    { key: "maxpressure", label: "Max-pressure", note: "every 5 s, green to the group with the longest queue (Varaiya 2013); it needs no plan and works junction by junction in a network", sim: pressure },
+    { key: "predictive", label: "OQIM predictive", note: "starts from the searched plan and, each second, ends or holds the green by the next 30 s of arrivals (in the field: the camera upstream)", sim: predictive },
   ];
 
   // the check: the replay under the measured lights against the crossings on the video

@@ -41,6 +41,9 @@ export type Controller =
   /** Green seconds per group, in `order`, and seconds of the phases out of view (default: as measured). */
   | { kind: "fixed"; greens: number[]; hidden?: number }
   | { kind: "actuated"; min: number; max: number; gap: number }
+  /** Every `step` s after `min`, the green goes to the group with the most vehicles waiting (the
+   * current one keeps it on a tie); the phases out of view keep `hidden` s once a cycle. */
+  | { kind: "maxpressure"; min: number; max: number; step: number; hidden: number }
   /** Starts from a fixed plan and, once a second after `min`, ends the green or holds it. */
   | { kind: "predictive"; min: number; max: number; horizon: number; greens: number[]; hidden?: number };
 
@@ -259,6 +262,25 @@ export function simulate(j: Junction, c: Controller): SimResult {
         advancePhase(j, s, () => s.t - s.since >= c.greens[s.phase] - 1e-9, greenEnded, c.hidden ?? j.hidden);
       } else if (c.kind === "actuated") {
         advancePhase(j, s, () => actuatedWantsEnd(j, s, c), greenEnded);
+      } else if (c.kind === "maxpressure") {
+        advancePhase(
+          j,
+          s,
+          () => {
+            const el = s.t - s.since;
+            if (el < c.min) return false;
+            if (el >= c.max) return true;
+            if (s.t < decideAt) return false;
+            decideAt = s.t + c.step;
+            const queueOf = (g: number) => j.approaches.reduce((q, ap, a) => q + (ap.group === g ? waiting(j, s, a) / ap.headway : 0), 0);
+            const here = queueOf(j.order[s.phase]);
+            // the other groups' pressure; with one group in view, its green ends once its queue is gone
+            const others = j.order.filter((_, o) => o !== s.phase).map(queueOf);
+            return others.length ? Math.max(...others) > here : here === 0 && !arrivedWithin(j, j.approaches.findIndex((ap) => ap.group === j.order[s.phase]), s.t - 3, s.t);
+          },
+          greenEnded,
+          c.hidden,
+        );
       } else if (c.kind === "predictive") {
         // once a second after the minimum green: end it now or hold it, whichever leaves less waiting
         // over the next `horizon` s of known arrivals (in the field, from the camera of the junction upstream)
