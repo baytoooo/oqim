@@ -60,7 +60,7 @@ async function getJson<T>(urls: string[]): Promise<T> {
   for (const u of urls) {
     try {
       const ctl = new AbortController();
-      const timer = setTimeout(() => ctl.abort(), 12000);
+      const timer = setTimeout(() => ctl.abort(), 8000);
       const r = await fetch(u, { signal: ctl.signal });
       clearTimeout(timer);
       if (r.ok) return (await r.json()) as T;
@@ -255,9 +255,9 @@ function showCamera(c: Camera): void {
 // ---------------------------------------------------------------- setup
 
 async function baseStyle(): Promise<maplibregl.StyleSpecification> {
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 2; i++) {
     const ctl = new AbortController();
-    const timer = setTimeout(() => ctl.abort(), 7000);
+    const timer = setTimeout(() => ctl.abort(), 6000);
     try {
       const r = await fetch("https://tiles.openfreemap.org/styles/dark", { signal: ctl.signal });
       if (r.ok) return (await r.json()) as maplibregl.StyleSpecification;
@@ -281,6 +281,10 @@ function dedupeParks(list: Park[]): Park[] {
 }
 
 async function main(): Promise<void> {
+  $("status").textContent = "Loading cameras, roads, car parks and the map";
+  // the basemap style loads alongside the data
+  const stylePromise = baseStyle();
+  const livePromise = getJson<{ results: { park_Id: string; privateCar?: { vacancy: number; lastupdate: string }[] }[] }>(["/api/hkparking"]).catch(() => null);
   const [d, r, snap] = await Promise.all([
     getJson<District>(["/data/hongkong.json"]),
     getJson<Roads>(["/data/hongkong_roads.json"]),
@@ -290,16 +294,14 @@ async function main(): Promise<void> {
   roads = r;
   let liveNote = `car park vacancy as fetched at ${snap.fetched}`;
   parksAll = snap.carparks;
-  try {
-    const live = await getJson<{ results: { park_Id: string; privateCar?: { vacancy: number; lastupdate: string }[] }[] }>(["/api/hkparking"]);
+  const live = await livePromise;
+  if (live) {
     const byId = new Map(live.results.map((x) => [x.park_Id, x.privateCar?.[0]]));
     parksAll = parksAll.map((p) => {
       const v = byId.get(p.id);
       return v && v.vacancy >= 0 ? { ...p, vacancy: v.vacancy, lastupdate: v.lastupdate } : p;
     });
     liveNote = "car park vacancy live from the Transport Department";
-  } catch {
-    /* the snapshot stays */
   }
   // vacancy older than 6 hours is not live: leave it out
   const newest = Math.max(...parksAll.map((p) => Date.parse((p.lastupdate ?? "").replace(" ", "T") + "+08:00") || 0));
@@ -307,7 +309,7 @@ async function main(): Promise<void> {
   const points = district.cameras.reduce((s, c) => s + c.series.length, 0);
   $("notes").textContent = `Sources: ${district.source}; ${snap.source}; roads ${roads.source}. ${district.cameras.length} cameras, ${points} snapshots counted. Road load is an estimate: the vehicles a camera sees, relative to the busiest tenth of its snapshots, mapped to a volume-to-capacity ratio (0.3 to 0.95) on the roads within 300 m; travel times follow the BPR function. Drivers and their origins are simulated (seeded); free spaces are real, and in the model 1% of the occupied spaces of a car park free up each minute (an assumption). A driver who finds the car park full searches for 8 minutes. Both strategies are judged by the same model.`;
 
-  const style = await baseStyle();
+  const style = await stylePromise;
   map = new maplibregl.Map({ container: "map", style, center: district.center, zoom: 15, pitch: 45, bearing: -15, attributionControl: { compact: true } });
   map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right");
   await new Promise<void>((ok) => {
@@ -367,7 +369,8 @@ async function main(): Promise<void> {
       }
     }, 180);
   });
-  $("status").textContent = `${district.district}: ${district.cameras.length} cameras, ${parksAll.length} car parks, ${liveNote}`;
+  $("status").textContent = `${district.district}: ${district.cameras.length} cameras, ${parksAll.length} car parks, ${liveNote}. Placing drivers`;
+  await new Promise((ok) => setTimeout(ok, 30));
   run();
   if (district.cameras[0]) showCamera(district.cameras[0]);
 }

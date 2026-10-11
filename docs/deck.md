@@ -85,6 +85,19 @@ Say clearly: this is a simulation (Intelligent Driver Model), one direction, cro
 
 ---
 
+## 5d. A whole district, live: Kwun Tong, Hong Kong (demo, 0:45)
+
+https://oqim-audit.vercel.app/city
+
+- 22 Transport Department traffic cameras within 700 m (open data, DATA.GOV.HK), counted by YOLO26n every 2 minutes; the load on each road now and forecast 10 minutes ahead (Holt's smoothing, backtested against "same as last").
+- Car park vacancy live from the Transport Department API (private cars), about 20 car parks around the destination.
+- 60 drivers heading to Kwun Tong MTR station within 10 minutes (simulated, seeded). "Nearest": every driver to the closest car park, as a navigator does. "OQIM": drivers placed one by one; each gets the car park and route of least door-to-door time given the roads already loaded by the drivers placed before and the spaces they will take.
+- At 13:45 Hong Kong time on 11 October: the nearest car park (apm) had 0 free spaces, so all 60 "nearest" drivers arrived to a full car park; with OQIM 5 did. Door to door 15.5 min against 12.7 min (minus 18%), vehicle-km with searching 305 against 181 (minus 41%).
+- Say: the drivers are simulated, the free spaces and the camera counts are real, and both strategies are judged by the same model (BPR travel times, 8 minutes of searching at a full car park).
+- The "Add drivers one by one" button shows each new route loading the roads the next driver sees.
+
+---
+
 ## 5c. It already works elsewhere, and Tashkent has started (impact, 0:45)
 
 - **Tashkent:** about 1,000 signalised junctions; 125 connected to TsODD's adaptive system, 545 planned for 2026; presidential decree of 4 December 2025 on congestion. No measured results published. ([Anhor.uz](https://anhor.uz/news/digital-brain/), [Yuz.uz](https://yuz.uz/ru/news/umne-svetofor-pomogut-sokratit-probki-i-izmenit-upravlenie-transportom-v-tashkente))
