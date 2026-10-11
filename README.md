@@ -50,6 +50,9 @@ The video is never uploaded. No number plates or faces are read.
 | Hong Kong traffic camera images and the counts made from them (`app/public/data/hongkong.json`, `app/public/media/hongkong/`) | Transport Department, Hong Kong SAR Government, traffic snapshot images, via DATA.GOV.HK; counted by YOLO26m at 960 px in `samples_src/hongkong_detect.py`; the page also loads the live image | DATA.GOV.HK terms of use (attribution) |
 | Hong Kong car park vacancy (`app/public/data/hk_carparks.json`, live through `app/api/hkparking.js`) | Transport Department, car park information and vacancy for private cars, via DATA.GOV.HK | DATA.GOV.HK terms of use (attribution) |
 | London JamCam clips and counts (`app/public/data/london.json`, `app/public/media/london/`, live through `app/api/jamcam.js`) | Transport for London JamCams, "Powered by TfL Open Data" | TfL open data terms (based on the Open Government Licence) |
+| Car park frames and space labels on `/parking` (`app/public/media/parking/`, `app/public/data/parking.json`) | PKLot (Almeida et al., Expert Systems with Applications 42(11), 2015), via the Voxel51 copy on Hugging Face; accuracy measured on 240 held-out images in `samples_src/parking_eval.py` | CC BY 4.0 |
+| Road damage model on `/roads` (`app/public/roads/model.onnx`) | YOLOv8n trained on RDD2022 by dronefreak (https://huggingface.co/dronefreak/rdd2022-yolov8n), exported to ONNX with NMS | AGPL-3.0 |
+| Road damage photos and the test sample on `/roads` (`app/public/media/roads/`, `app/public/data/roads_eval.json`) | RDD2022 (Arya et al., arXiv:2209.08538), via https://huggingface.co/datasets/dronefreak/RDD2022; 300 images of the test split for the measured mAP50 | CC BY-SA 4.0 |
 | Published results on `/elsewhere` | The articles and reports linked on that page | Quoted with links |
 
 No other data is used. Drivers, their origins and departure times on `/city` are simulated (seeded) and marked as such; so is the traffic on `/network`. Because the weights are AGPL-3.0, the site source is AGPL-3.0 too (`app/package.json`).
@@ -72,6 +75,9 @@ Built during the final:
 * the district model (`app/src/oqim/allocate.ts`, `app/src/pages/city.astro`, `app/src/scripts/city.ts`, `app/api/`): Kwun Tong cameras and live car park vacancy, road load now and forecast, drivers sent to car parks with their own loads counted
 * the camera collectors and counters (`samples_src/hongkong_*.py`, `samples_src/london_*.py`)
 * the Elsewhere page (`app/src/pages/elsewhere.astro`)
+* the parking page (`app/src/pages/parking.astro`, `app/src/scripts/parking.ts`, `samples_src/parking_eval.py`) and the road condition page (`app/src/pages/roads.astro`, `app/src/scripts/roads.ts`, `samples_src/roads_*.py`)
+* the audit dashboard: traffic events from the elimination rules, the Purdue coordination diagram and the vehicles served and left at each green
+* the defence deck (`deck/build.js`, `deck/OQIM_defence.pptx`, `deck/OQIM_defence.pdf`)
 
 ## What is measured
 
