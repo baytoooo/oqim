@@ -2,7 +2,7 @@
 
 7 минут выступления, потом 3 минуты вопросов. Говорим по-английски (текст ниже можно читать как есть), подсказки для себя по-русски. Режим: **Startup** (сказать вслух в начале, правила это требуют).
 
-Кто говорит: **Amal** (капитан) открывает и закрывает, **Komronbek** показывает трекер и щиты, **Aziza** показывает фото и район. Можно поменяться, главное заранее.
+Кто говорит (так же в заметках к слайдам): **Amal** слайды 1, 2, 10, 11 (около 2:30), **Komronbek** слайды 3 to 5 и весь показ за ноутбуком (около 2:10), **Aziza** слайды 6 to 9 (около 2:20). Komronbek всё время за ноутбуком и переключает вкладки.
 
 ## За 10 минут до выхода
 
@@ -18,15 +18,15 @@
 
 ## Речь по слайдам (7:00)
 
-### Слайд 1. Титул. Amal, 0:00 to 0:20
+### Слайд 1. Титул. Amal, 0:00 to 0:15
 
 > Good morning. We are team PariVision from Webster University in Tashkent: Amal, Komronbek and Aziza. Our mode is Startup. OQIM is a parking tracker. It uses cameras that already watch car parks to tell a driver where a free space will be when they get there.
 
-### Слайд 2. Проблема. Amal, 0:20 to 0:50
+### Слайд 2. Проблема. Amal, 0:15 to 0:50
 
 > A driver picks a car park by habit, finds it full at the gate, and drives on. While they search, that car is part of the traffic. INRIX found US drivers spend 17 hours a year looking for parking. Only about 5% of off-street car parks publish their free spaces. Tashkent is starting paid street parking, 13,208 spaces on 86 streets, first come, first served. Where cities show drivers the free space, it works: SFpark cut cruising by half on its pilot blocks.
 
-### Слайд 3. Демо 1: трекер. Komronbek, 0:50 to 2:10
+### Слайд 3. Демо 1: трекер. Komronbek, 0:50 to 2:00
 
 Переключиться на вкладку /tracker и нажать Play.
 
@@ -36,19 +36,19 @@
 >
 > Now the useful part. On the right: which car park to drive to. It does not show the free spaces now, it shows how many will be free when you arrive, and the chance of a space.
 
-Ползунок примерно на 08:00. Показать блок "Many drivers asking at the same time" (40 водителей).
+Ползунок на 10:13 (как на слайде). Показать блок "Many drivers asking at the same time" (40 водителей): навигатор 17 из 40 к полной парковке, OQIM 4 из 40.
 
 > And when forty drivers ask at the same moment, a navigator sends all of them to the nearest car park. Look how many find it full. OQIM places them one by one, counting the drivers it already sent, and almost nobody finds a full car park.
 
-### Слайд 4. Цифры трекера. Komronbek, 2:10 to 2:40
+### Слайд 4. Цифры трекера. Komronbek, 2:00 to 2:30
 
 > How good is it? Against the dataset's hand labels: 98.8% of 6,844 space readings are right. The free count is off by one space in the median. The forecast ten minutes ahead is off by 3.0 spaces, against 4.6 if you just assume "same as now".
 
-### Слайд 5. Как устроено. Komronbek, 2:40 to 3:10
+### Слайд 5. Как устроено. Komronbek, 2:30 to 3:00
 
 > One pipeline for every page. A camera frame, a detector, YOLO, that finds cars, buses and trucks, small tiles so the far rows are seen too, then free or taken for each space, then the forecast, then the advice. The detector runs in the browser, on WebGPU or WebAssembly. No GPU server, no video stored, no number plates or faces read.
 
-### Слайд 6. Демо 2: своё фото. Aziza, 3:10 to 4:00
+### Слайд 6. Демо 2: своё фото. Aziza, 3:00 to 3:35
 
 Вкладка /parking, кнопка "Choose a photo", выбрать своё фото.
 
@@ -56,29 +56,29 @@
 >
 > On the 240 PKLot images we did not tune on, it gets 97.4% of the marked spaces right.
 
-### Слайд 7. Демо 3: район. Aziza, 4:00 to 4:50
+### Слайд 7. Демо 3: район. Aziza, 3:35 to 4:15
 
 Вкладка /city.
 
-> One district at scale: Kwun Tong in Hong Kong. The government publishes 22 traffic cameras and the free spaces of the car parks, live. We count the vehicles on every camera; here are all of them, with what the detector found. Drivers looking for parking get the car park and the route that cost least, counting the other drivers. In our snapshot, sending everyone to the nearest car park put 60 drivers in front of a full one. With OQIM it was 5.
+> One district at scale: Kwun Tong in Hong Kong. The government publishes 22 traffic cameras and the free spaces of the car parks, live. We count the vehicles on every camera; here are all of them, with what the detector found. Drivers looking for parking get the car park and the route that cost least, counting the other drivers. In our snapshot on the slide, sending everyone to the nearest car park put 60 drivers in front of a full one; with OQIM it was 5. The live page shows today's numbers, so they differ.
 
-### Слайд 8. Демо 4: рекламные щиты. Komronbek, 4:50 to 5:40
+### Слайд 8. Демо 4: рекламные щиты. Aziza, 4:15 to 4:50
 
-Вкладка /banner, где C3905 уже посчитан. Нажать Play.
+Вкладка /banner, где пример уже посчитан. Нажать Play.
 
 > The same cameras give a second product. Outdoor advertising companies need proof of how many vehicles pass a billboard. We draw one line in front of the billboard. Every vehicle is counted once, when it crosses the line, by type and direction. Watch: each one turns green and the counter goes up, so every count can be checked by eye, and these two buttons correct it. The counts go to a log for each billboard, and the statistics build up hour by hour.
 >
 > Against our heavier offline pipeline: 130 of 130 vehicles at midday, 55 of 59 at dusk.
 
-### Слайд 9. Следующий этап. Amal, 5:40 to 6:10
+### Слайд 9. Следующий этап. Aziza, 4:50 to 5:20
 
 > The next stage uses the same cameras on traffic lights. From one video of a junction we read the lights and every vehicle, and test signal plans on a replay of that junction. One honest result: the textbook Webster plan was worse than today's timing on all four clips. Our predictive control cut the wait by 13 to 18% on two of them. It is on the site at /audit, with a green wave in 3D and a road damage map.
 
-### Слайд 10. Кто платит. Amal, 6:10 to 6:40
+### Слайд 10. Кто платит. Amal, 5:20 to 6:25
 
-> Who pays: car park operators, for full spaces and less queueing at the gate; the city, for less searching traffic; advertising companies, for counted traffic at each billboard. The first step is a three month pilot on one operator's own cameras. The numbers on this slide are our assumptions, to check with that operator.
+> Who pays: car park operators, for full spaces and less queueing at the gate; the city, for less searching traffic; advertising companies, for counted traffic at each billboard. We price per camera, or per billboard, per month, and set the price in the pilot. Value for an operator is the extra spaces filled times hours times tariff, plus drivers no longer turned away at the gate. Our costs are small: three engineers part time, static hosting from free to about 20 dollars a month, no GPU server and no sensors in the ground. The first step is a three month pilot on one operator's own cameras. Every number on this slide is an assumption to check with that operator, and we will state payback from the pilot, not before.
 
-### Слайд 11. Команда и просьба. Amal, 6:40 to 7:00
+### Слайд 11. Команда и просьба. Amal, 6:25 to 7:00
 
 > We are three students who built this in the final, on top of our elimination system, and we say what we reused. What we ask for: one car park operator in Tashkent with cameras, for a pilot. Thank you. Everything is live at oqim-audit.vercel.app, and the code is on GitHub.
 
