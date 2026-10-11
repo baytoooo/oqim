@@ -379,6 +379,9 @@ export class LocalApi implements Api {
   backend: Backend | null = null;
   /** Signal heads (work pixels) the next job reads on every frame (the signal audit, src/oqim/). */
   heads: Rect[] = [];
+  /** The detector file in /pipeline/ the next job uses; changing it loads the other model. */
+  model = "model_n.onnx";
+  private loadedModel: string | null = null;
   private worker: Worker | null = null;
   private engine: Promise<Engine> | null = null;
   private engineProgress: ((f: number) => void) | null = null;
@@ -676,6 +679,11 @@ export class LocalApi implements Api {
   /** Starts the worker and loads the scene and the model once; later jobs reuse them. */
   private load(onProgress: (f: number) => void): Promise<Engine> {
     this.engineProgress = onProgress;
+    if (this.engine && this.loadedModel !== this.model) {
+      this.worker?.terminate();
+      this.worker = null;
+      this.engine = null;
+    }
     if (!this.engine) {
       this.engine = (async () => {
         const refs = await loadReferences();
@@ -689,7 +697,8 @@ export class LocalApi implements Api {
           this.engineFailed = reject;
         });
         const local = new URL("/pipeline/", location.href).href;
-        const init: ToWorker = { type: "init", base: local, bases: [`${ASSET_CDN}/pipeline/`, local], refs, allowWebGpu: this.backend !== "wasm" };
+        const init: ToWorker = { type: "init", base: local, bases: [`${ASSET_CDN}/pipeline/`, local], refs, allowWebGpu: this.backend !== "wasm", model: this.model };
+        this.loadedModel = this.model;
         worker.postMessage(init, Object.values(refs).map((r) => r.buffer));
         const engine = await ready;
         this.backend = engine.backend;

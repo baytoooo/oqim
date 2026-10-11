@@ -325,6 +325,7 @@ async function run(): Promise<void> {
   }
   $("backend").textContent = api.backend === "webgpu" ? "The detector runs on this device's GPU (WebGPU)." : "No WebGPU here: the detector runs on the CPU (WebAssembly), which is several times slower. Chrome or Edge on a laptop is faster.";
   api.heads = config.heads.map((h) => [...h] as Rect);
+  api.model = $<HTMLSelectElement>("model").value;
   const limit = Number($<HTMLSelectElement>("limit").value);
   let id: string;
   try {

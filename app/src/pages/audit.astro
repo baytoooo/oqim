@@ -43,7 +43,11 @@ import { SAMPLES } from "../oqim/samples";
       <button class="btn tool" type="button" data-tool="head" aria-pressed="false">Signal head</button>
       <button class="btn ghost" type="button" id="undo">Undo</button>
       <button class="btn ghost" type="button" id="clear">Clear all</button>
-      <label class="limit">Analyse the first <select id="limit">
+      <label class="limit">Detector <select id="model">
+        <option value="model_n.onnx" selected>YOLO26n, 10 MB, fast</option>
+        <option value="model.onnx">YOLO26s, 38 MB, more accurate</option>
+      </select></label>
+      <label class="limit lim2">Analyse the first <select id="limit">
         <option value="120">2 min</option>
         <option value="180">3 min</option>
         <option value="300">5 min</option>
@@ -129,6 +133,7 @@ import { SAMPLES } from "../oqim/samples";
   .tools { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; margin: var(--sp-4) 0; }
   .tool[aria-pressed="true"] { background: var(--zebra); border-color: var(--zebra); color: var(--ink); }
   .limit { margin-left: auto; color: var(--muted); font-size: .875rem; display: flex; gap: var(--sp-2); align-items: center; }
+  .limit.lim2 { margin-left: 0; }
   select, input[type="number"] { background: var(--asphalt-3); color: var(--paint); border: 1px solid var(--line-2); border-radius: var(--r-1); padding: 4px 6px; font: inherit; }
   .setup-grid { display: grid; gap: var(--sp-4); grid-template-columns: 1fr; }
   @media (min-width: 960px) { .setup-grid { grid-template-columns: 2.4fr 1fr; } }

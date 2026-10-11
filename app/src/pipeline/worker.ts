@@ -168,13 +168,13 @@ async function sceneFiles(bases: string[]): Promise<Scene> {
   return new Scene(constants, raw);
 }
 
-async function init(hosts: string[], refs: Record<string, Uint8Array>, allowWebGpu: boolean): Promise<void> {
+async function init(hosts: string[], refs: Record<string, Uint8Array>, allowWebGpu: boolean, file = "model.onnx"): Promise<void> {
   // the host that sends the model fastest first, the others as fallbacks
-  const quick = (await fastest(hosts.map((b) => b + "model.onnx"))).replace(/model\.onnx$/, "");
+  const quick = (await fastest(hosts.map((b) => b + file))).slice(0, -file.length);
   const bases = [quick, ...hosts.filter((b) => b !== quick)];
   const [scene, model, webgpu] = await Promise.all([
     sceneFiles(bases),
-    fetchFirst(bases, "model.onnx", (fraction) => post({ type: "loading", fraction })),
+    fetchFirst(bases, file, (fraction) => post({ type: "loading", fraction })),
     allowWebGpu ? hasWebGpu() : Promise.resolve(false),
   ]);
   const ort = await runtime(webgpu);
@@ -253,7 +253,7 @@ function finish(m: Extract<ToWorker, { type: "finish" }>): void {
 async function handle(m: ToWorker): Promise<void> {
   switch (m.type) {
     case "init":
-      return init(m.bases ?? [m.base], m.refs, m.allowWebGpu);
+      return init(m.bases ?? [m.base], m.refs, m.allowWebGpu, m.model);
     case "align":
       return align(m);
     case "frame":

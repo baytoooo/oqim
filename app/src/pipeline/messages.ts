@@ -29,7 +29,7 @@ export type ToWorker =
   /** Load scene.json, scene.bin.gz and model.onnx from `base` (the site's /pipeline/ URL) and
    * create the ONNX session. `refs` are the reference views as grey bytes at 1/4 size; WebGPU is
    * tried only when `allowWebGpu` (the page can force the WebAssembly path). */
-  | { type: "init"; base: string; refs: Record<string, Uint8Array>; allowWebGpu: boolean; bases?: string[] }
+  | { type: "init"; base: string; refs: Record<string, Uint8Array>; allowWebGpu: boolean; bases?: string[]; model?: string }
   /** Start a job: align its first frame (grey, work size / 4) and set up an Analyser. */
   | { type: "align"; job: string; gray: Uint8Array; workSize: [number, number]; fps: number }
   /** One analysed frame: the whole frame for the detector (960 px wide) and the lamp crop at work
