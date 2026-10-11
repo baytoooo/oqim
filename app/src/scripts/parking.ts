@@ -369,7 +369,7 @@ function render(): void {
   const sg = data?.eval.suggest;
   agreeEl.textContent = suggested && spaces.some((x) => x.auto)
     ? `Suggested from the photo: ${suggested.cars} vehicles (taken spaces) and ${suggested.gaps} gaps in rows of cars that fit a car (dashed; free unless a vehicle covers it). Click a space to remove it, or click 4 corners to add one.` +
-      (sg ? ` Checked on ${sg.images} PKLot images against the hand labels: ${Math.round(sg.takenFound * 100)}% of the taken spaces are found, and ${Math.round(sg.suggestedRight * 100)}% of the suggested free spaces are free. A free space with no car on either side (an empty row) cannot be seen in one photo; draw it.` : "")
+      (sg ? ` Checked on ${sg.images} PKLot images against the hand labels (the images its settings were picked on): ${Math.round(sg.takenFound * 100)}% of the taken spaces are found, and ${Math.round(sg.suggestedRight * 100)}% of the suggested free spaces are free. A free space with no car on either side (an empty row) cannot be seen in one photo; draw it.` : "")
     : labelled
     ? `The hand labels of this frame: ${spaces.filter((s) => s.occupied === false).length} free. The detector agrees with them on ${agree} of ${labelled} spaces; dashed amber outlines mark the others.`
     : drawing
