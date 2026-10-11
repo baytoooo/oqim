@@ -85,6 +85,20 @@ Say clearly: this is a simulation (Intelligent Driver Model), one direction, cro
 
 ---
 
+## 5c. It already works elsewhere, and Tashkent has started (impact, 0:45)
+
+- **Tashkent:** about 1,000 signalised junctions; 125 connected to TsODD's adaptive system, 545 planned for 2026; presidential decree of 4 December 2025 on congestion. No measured results published. ([Anhor.uz](https://anhor.uz/news/digital-brain/), [Yuz.uz](https://yuz.uz/ru/news/umne-svetofor-pomogut-sokratit-probki-i-izmenit-upravlenie-transportom-v-tashkente))
+- **Google Project Green Light**, 12 cities: up to 30% fewer stops, up to 10% less emissions at about 70 junctions, from Maps data ([Seattle DOT](https://sdotblog.seattle.gov/2024/01/04/project-green-light)).
+- **Surtrac, Pittsburgh:** travel time down more than 25%, idling down 40% ([Smart Cities Dive](https://www.smartcitiesdive.com/news/this-ai-traffic-system-in-pittsburgh-has-reduced-travel-time-by-25/447494/)).
+- **SCOOT, UK:** about 12% less delay than up-to-date fixed plans, 20% than typical ones ([DfT TAL 7/99](https://tsrgd.co.uk/pdf/tal/1999/tal-7-99.pdf)).
+- **Utah ATSPM:** the same measures as OQIM (arrivals on green, split failures) from controller logs; USD 108 million projected savings over 10 years ([FHWA](https://ops.fhwa.dot.gov/publications/fhwahop20003/ch4.htm)).
+- **Copenhagen green wave:** travel time down 17%, stops from six to under one ([Centre for Public Impact](https://www.centreforpublicimpact.org/case-study/green-waves-bicycles-copenhagen)).
+- **Parking (next step):** SFpark cut cruising by 50% and search time by 43% ([ACCESS](https://accessmagazine.org/fall-2016/cruising-for-parking-lessons-from-san-francisco/)); INRIX: 17 hours a year per US driver searching ([INRIX](https://inrix.com/press-releases/parking-pain-us/)); Tashkent's Poytaxt Parking plans 86 streets, 13,208 spaces ([Spot.uz](https://www.spot.uz/ru/2025/05/06/poytaxt-parking)).
+
+Line to say: "Cities that retime and coordinate signals cut stops and delay. They can do it because they measure. Most junctions in Tashkent cannot be measured today; OQIM measures them from one video."
+
+---
+
 ## 6. Why it is hard to copy
 
 - **Reading the lights from pixels**, with no controller access: our elimination work (signal reader, registration, rules, 98 labelled events) made this possible in a day.

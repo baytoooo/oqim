@@ -1,0 +1,168 @@
+---
+import Base from "../layouts/Base.astro";
+
+// Every number here is as the source reports it; vendor results are the vendor's own.
+const signals = [
+  {
+    where: "12 cities on four continents",
+    who: "Google, Project Green Light",
+    what: "Recommends new signal timing to city engineers from Google Maps driving data; the engineers apply it on their existing controllers.",
+    result: "Up to 30% fewer stops and up to 10% less emissions at about 70 intersections, as Google reports.",
+    links: [
+      ["Seattle DOT", "https://sdotblog.seattle.gov/2024/01/04/project-green-light"],
+      ["New Atlas", "https://newatlas.com/transport/google-green-light-traffic/"],
+    ],
+    us: "Same output, a timing recommendation for the engineer. Green Light needs a city with enough Maps traffic and Google's programme; OQIM needs one video and gives the measurement itself.",
+  },
+  {
+    where: "Pittsburgh, USA",
+    who: "Surtrac (Carnegie Mellon, Rapid Flow Technologies)",
+    what: "Each junction plans its own green from the vehicles approaching and tells its neighbours what it is about to send them.",
+    result: "On the pilot signals (24 in the report): travel time down more than 25%, idling down 40%, emissions down 21%.",
+    links: [["Smart Cities Dive", "https://www.smartcitiesdive.com/news/this-ai-traffic-system-in-pittsburgh-has-reduced-travel-time-by-25/447494/"]],
+    us: "OQIM's predictive mode is the same idea: decide the green from the arrivals of the next 30 s, which in a network come from the junction upstream.",
+  },
+  {
+    where: "United Kingdom",
+    who: "SCOOT (TRL)",
+    what: "Adaptive control from loop detectors: splits, offsets and cycle times follow the measured traffic.",
+    result: "About 12% less delay than up-to-date fixed plans and 20% less than a typical fixed plan; little gain once a road is saturated.",
+    links: [
+      ["DfT Traffic Advisory Leaflet 7/99", "https://tsrgd.co.uk/pdf/tal/1999/tal-7-99.pdf"],
+      ["TRB, evaluation across congestion levels", "https://trid.trb.org/view.aspx?id=663623"],
+    ],
+    us: "The same limit shows in our audit: when demand is near capacity, retiming helps little, and the page says so.",
+  },
+  {
+    where: "Utah, USA",
+    who: "UDOT, Automated Traffic Signal Performance Measures (ATSPM)",
+    what: "Reads the controllers' event logs to measure every signal: arrivals on green, split failures, platoon ratio, red-light actuations.",
+    result: "Almost every state signal measured; the maintenance programme was projected to save USD 108 million over 10 years.",
+    links: [
+      ["FHWA", "https://ops.fhwa.dot.gov/publications/fhwahop20003/ch4.htm"],
+      ["UDOT", "https://transportationtechnology.utah.gov/traffic-signal-operations/"],
+    ],
+    us: "OQIM measures the same things (arrivals on green, split failures, red-light runs) from video, for junctions whose controllers are not connected.",
+  },
+  {
+    where: "Copenhagen, Denmark",
+    who: "City of Copenhagen, green waves for cyclists",
+    what: "Signals on main streets coordinated for 20 km/h, inbound in the morning and outbound in the evening.",
+    result: "Travel time down 17% on one street; stops from six to under one; on Osterbrogade from 12.5 to 3.7 stops.",
+    links: [
+      ["Centre for Public Impact", "https://www.centreforpublicimpact.org/case-study/green-waves-bicycles-copenhagen"],
+      ["European Cyclists' Federation", "https://ecf.com/node/3737"],
+    ],
+    us: "The corridor page shows the same effect on Tashkent streets: only the offsets change, and the stops per vehicle fall.",
+  },
+];
+
+const parking = [
+  {
+    where: "San Francisco, USA",
+    who: "SFpark",
+    what: "Sensors on street spaces and prices adjusted by block and time of day to keep occupancy between 60 and 80%.",
+    result: "Cruising for parking down 50% on the pilot blocks; the time most drivers took to find a space down 43%.",
+    links: [
+      ["ACCESS Magazine", "https://accessmagazine.org/fall-2016/cruising-for-parking-lessons-from-san-francisco/"],
+      ["Next City", "https://nextcity.org/urbanist-news/san-francisco-cuts-cruising-for-parking-in-half-with-market-clearing-prices"],
+    ],
+  },
+  {
+    where: "United States",
+    who: "INRIX parking study (2017)",
+    what: "A study of what searching for parking costs drivers.",
+    result: "Drivers spend 17 hours a year searching for parking, USD 345 each in time, fuel and emissions; 107 hours in New York.",
+    links: [["INRIX", "https://inrix.com/press-releases/parking-pain-us/"]],
+  },
+  {
+    where: "Worldwide",
+    who: "Parkopedia",
+    what: "Predicts whether a car park will have space at the driver's arrival time, from occupancy history and models.",
+    result: "Its own figure: only about 5% of off-street car parks publish live availability, so prediction fills the gap.",
+    links: [["Parkopedia", "https://business.parkopedia.com/blog/parking-availability-how-predictive-and-responsive-data-work-together-to-provide-drivers-with-the-best-possible-parking-experience"]],
+  },
+  {
+    where: "Tashkent",
+    who: "Poytaxt Parking (operator Streetpark Systems)",
+    what: "Paid street parking paid in an app, from 8 May 2025; five tariff zones, 5,000 to 12,000 sum an hour.",
+    result: "Planned: 86 streets with 13,208 spaces. Spaces are first come, first served.",
+    links: [["Spot.uz", "https://www.spot.uz/ru/2025/05/06/poytaxt-parking"]],
+  },
+];
+---
+<Base title="Elsewhere" description="Where signal timing, green waves and parking guidance already work, with their published results, and where Tashkent stands." active="elsewhere">
+  <section class="wrap head">
+    <p class="kicker">Evidence</p>
+    <h1>It already works elsewhere</h1>
+    <p class="lede">Retiming and coordinating signals is a proven way to cut stops and delay. What these cities have that most of ours do not is the measurement: detectors, connected controllers or a big data partner. OQIM gets the measurement from one video.</p>
+  </section>
+
+  <section class="wrap">
+  <div class="tash panel panel-pad">
+    <p class="k">Tashkent now</p>
+    <p class="big">About <strong>1,000</strong> signalised junctions. <strong>125</strong> are connected to the city's adaptive control system run by the Traffic Organisation Centre (TsODD); <strong>545</strong> are planned for 2026. A presidential decree of 4 December 2025 sets out measures against congestion in Tashkent.</p>
+    <p class="hint">The reports give no measured results yet. OQIM can audit a junction before it is connected and after, and the hundreds that will not be connected in 2026. Sources: <a href="https://anhor.uz/news/digital-brain/">Anhor.uz, 12 March 2026</a>, <a href="https://yuz.uz/ru/news/umne-svetofor-pomogut-sokratit-probki-i-izmenit-upravlenie-transportom-v-tashkente">Yuz.uz, 25 March 2026</a>.</p>
+  </div>
+  </section>
+
+  <section class="wrap">
+    <h2>Signals</h2>
+    <div class="cards">
+      {signals.map((c) => (
+        <article class="card panel">
+          <p class="where">{c.where}</p>
+          <h3>{c.who}</h3>
+          <p>{c.what}</p>
+          <p class="result">{c.result}</p>
+          <p class="us"><span>OQIM:</span> {c.us}</p>
+          <p class="src">{c.links.map(([t, u], i) => <>{i > 0 && " · "}<a href={u}>{t}</a></>)}</p>
+        </article>
+      ))}
+    </div>
+  </section>
+
+  <section class="wrap">
+    <h2>Parking</h2>
+    <p class="lede small">Parking is the next step for OQIM, not a feature of this prototype: a car park is one more node of the network, with its own capacity, entry queue and arrivals. The same camera pipeline counts vehicles in and out; the corridor model takes the entry queue as a lost lane.</p>
+    <div class="cards">
+      {parking.map((c) => (
+        <article class="card panel">
+          <p class="where">{c.where}</p>
+          <h3>{c.who}</h3>
+          <p>{c.what}</p>
+          <p class="result">{c.result}</p>
+          <p class="src">{c.links.map(([t, u], i) => <>{i > 0 && " · "}<a href={u}>{t}</a></>)}</p>
+        </article>
+      ))}
+    </div>
+  </section>
+
+  <section class="wrap end">
+    <p class="hint">Results are as the sources report them; vendor results are the vendor's own and were not checked by us. Sources opened on 11 October 2026.</p>
+    <p><a class="btn primary" href="/audit">Run an audit</a> <a class="btn" href="/network">See a corridor in 3D</a></p>
+  </section>
+</Base>
+
+<style>
+  .head { padding-block: var(--sp-7) var(--sp-4); }
+  .head h1 { font: 700 clamp(2.2rem, 5vw, 3.4rem)/1 var(--font-display); margin: var(--sp-2) 0 var(--sp-3); }
+  h2 { font: 700 1.9rem/1.1 var(--font-display); margin: var(--sp-7) 0 var(--sp-4); }
+  .tash { margin-top: var(--sp-4); border-left: 4px solid var(--zebra); }
+  .k { margin: 0 0 var(--sp-2); color: var(--zebra); font: 600 .8125rem var(--font-mono); text-transform: uppercase; letter-spacing: .06em; }
+  .big { font-size: 1.2rem; line-height: 1.5; margin: 0; max-width: 90ch; }
+  .hint { color: var(--muted); font-size: .875rem; margin: var(--sp-3) 0 0; max-width: 100ch; }
+  .lede.small { font-size: 1rem; max-width: 90ch; }
+  .cards { display: grid; gap: var(--sp-4); grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+  .card { padding: var(--sp-5); display: flex; flex-direction: column; gap: var(--sp-2); }
+  .card h3 { font: 700 1.35rem/1.15 var(--font-display); margin: 0; }
+  .card p { margin: 0; color: var(--paint-2); font-size: .9375rem; line-height: 1.5; }
+  .where { color: var(--muted) !important; font: 600 .75rem var(--font-mono) !important; text-transform: uppercase; letter-spacing: .06em; }
+  .result { color: var(--paint) !important; font-weight: 600; }
+  .us { border-top: 1px solid var(--line); padding-top: var(--sp-2); }
+  .us span { color: var(--zebra); font-weight: 700; }
+  .src { font-size: .8125rem !important; margin-top: auto !important; padding-top: var(--sp-2); }
+  .src a { color: var(--zebra); }
+  .end { padding-block: var(--sp-6) var(--sp-8); }
+  .end .btn { margin-right: var(--sp-2); }
+</style>
