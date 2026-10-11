@@ -12,6 +12,7 @@ export const NAV_LINKS: NavLink[] = [
   { href: "/tracker", key: "tracker", label: "Parking tracker", cls: "nav-demo" },
   { href: "/city", key: "city", label: "District" },
   { href: "/parking", key: "parking", label: "Parking accuracy" },
+  { href: "/banner", key: "banner", label: "Billboards" },
   { href: "/audit", key: "audit", label: "Signal audit" },
   { href: "/network", key: "network", label: "Green wave 3D" },
   { href: "/roads", key: "roads", label: "Roads" },

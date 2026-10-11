@@ -1,0 +1,139 @@
+---
+import Base from "../layouts/Base.astro";
+import { SAMPLES } from "../oqim/samples";
+---
+<Base title="Billboard traffic" description="A video from a camera by a billboard: OQIM counts every vehicle that passes it, by type and direction, per minute and per hour, and keeps a log for each billboard." active="banner">
+  <section class="wrap head">
+    <p class="kicker">Billboard traffic</p>
+    <h1>How many vehicles pass your billboard</h1>
+    <p class="lede">Draw a line across the road in front of the billboard. OQIM tracks every vehicle in the video and counts each one once, when it crosses the line: cars, buses, trucks and motorcycles, each way, minute by minute. Save the count to the billboard's log and the statistics build up, place by place and hour by hour. It runs in this browser: the video is not uploaded anywhere.</p>
+  </section>
+
+  <section class="wrap step">
+    <div class="pick-grid">
+      <div class="panel panel-pad">
+        <p class="k">A video from a camera or a phone that does not move</p>
+        <label class="btn primary file-btn">
+          <input type="file" id="bn-file" accept="video/*" />
+          Choose a video file
+        </label>
+        <p class="hint">MP4 or MOV. Up to 10 minutes are analysed.</p>
+      </div>
+      <div class="panel panel-pad">
+        <p class="k">Or a sample: a Tashkent junction, the organisers' footage (the line is set where the southbound traffic passes)</p>
+        <div class="samples">
+          {SAMPLES.map((s) => (
+            <button class="btn sample" type="button" data-sample={s.name}>
+              <span class="mono">{s.name}</span> <span>{s.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+    <p class="status" id="bn-pick" role="status"></p>
+  </section>
+
+  <section class="wrap step" id="bn-setup" hidden>
+    <div class="tools" role="toolbar" aria-label="Line">
+      <span class="hint">Click two points: the counting line across the road in front of the billboard.</span>
+      <label class="lbl">Billboard <input id="bn-place" type="text" placeholder="e.g. Amir Temur 12, north face" /></label>
+      <label class="lbl">Detector <select id="bn-model">
+        <option value="model_n.onnx">YOLO26n, 10 MB, fast</option>
+        <option value="model.onnx" selected>YOLO26s, 38 MB, more accurate</option>
+      </select></label>
+      <button class="btn primary" type="button" id="bn-run">Count the vehicles</button>
+    </div>
+    <div class="frame-wrap"><canvas id="bn-frame" aria-label="First frame of the video; click two points to draw the counting line"></canvas></div>
+  </section>
+
+  <section class="wrap step" id="bn-running" hidden>
+    <div class="panel panel-pad">
+      <p class="mono" id="bn-stage">Starting</p>
+      <div class="bar"><i id="bn-fill"></i></div>
+      <p class="hint" id="bn-backend"></p>
+    </div>
+  </section>
+
+  <section class="wrap step" id="bn-report" hidden>
+    <div class="rep-grid">
+      <div class="vid-wrap">
+        <video id="bn-video" controls muted playsinline></video>
+        <canvas id="bn-overlay" aria-hidden="true"></canvas>
+        <div class="live-n"><span class="v mono" id="bn-live">0</span><span class="l">passed so far</span></div>
+      </div>
+      <div class="panel panel-pad">
+        <p class="big"><span class="v mono" id="bn-total">0</span> <span class="l">vehicles passed</span></p>
+        <p class="hint" id="bn-fix-note">Counted by the model. Check by eye while the video plays, and correct:</p>
+        <div class="row"><button class="btn small" type="button" id="bn-plus">Missed one (+1)</button> <button class="btn small" type="button" id="bn-minus">Not a vehicle (-1)</button> <button class="btn ghost small" type="button" id="bn-reset">Undo corrections</button></div>
+        <p class="hint" id="bn-rate"></p>
+        <table class="t" id="bn-classes"></table>
+        <p class="hint" id="bn-dir"></p>
+        <div class="row"><label>If every hour were like this one, over <input id="bn-hours" type="number" min="1" max="24" value="16" /> hours a day:</label> <strong class="mono" id="bn-day"></strong></div>
+        <div class="row"><button class="btn primary" type="button" id="bn-save">Save to the billboard's log</button> <button class="btn ghost" type="button" id="bn-csv">Download the passes (CSV)</button></div>
+      </div>
+    </div>
+    <div class="panel panel-pad mt">
+      <p class="k">Vehicles per minute</p>
+      <svg id="bn-minutes" viewBox="0 0 640 140" role="img" aria-label="Vehicles that passed in each minute of the video"></svg>
+      <p class="hint">Play the video: each vehicle turns green when it crosses the line and is counted, so every count can be checked by eye.</p>
+    </div>
+  </section>
+
+  <section class="wrap step">
+    <div class="panel panel-pad">
+      <p class="k">The log: counts saved in this browser, per billboard</p>
+      <div class="scroll-x"><table class="t" id="bn-log"></table></div>
+      <div class="row"><button class="btn ghost" type="button" id="bn-log-csv">Download the log (CSV)</button></div>
+    </div>
+    <div class="panel panel-pad mt">
+      <p class="k">How exact the count is</p>
+      <p class="hint" id="bn-check"></p>
+    </div>
+  </section>
+</Base>
+
+<script>
+  import "../scripts/banner.ts";
+</script>
+
+<style>
+  .head { padding-block: var(--sp-7) var(--sp-4); }
+  .head h1 { font: 700 clamp(2rem, 4.6vw, 3.2rem)/1.02 var(--font-display); margin: var(--sp-2) 0 var(--sp-3); }
+  .step { margin-bottom: var(--sp-5); }
+  .pick-grid { display: grid; gap: var(--sp-4); grid-template-columns: 1fr; }
+  @media (min-width: 900px) { .pick-grid { grid-template-columns: 1fr 1.4fr; } }
+  .k { margin: 0 0 var(--sp-3); color: var(--muted); font-size: .875rem; }
+  .hint { color: var(--muted); font-size: .875rem; margin: var(--sp-2) 0; }
+  .file-btn input { display: none; }
+  .samples { display: flex; flex-wrap: wrap; gap: 8px; }
+  .status { color: var(--paint-2); font-size: .9rem; min-height: 1.4em; }
+  .tools { display: flex; flex-wrap: wrap; gap: var(--sp-3); align-items: center; margin-bottom: var(--sp-3); }
+  .lbl { display: flex; gap: 6px; align-items: center; color: var(--paint-2); font-size: .9rem; }
+  input[type="text"], input[type="number"], select { background: var(--asphalt-3); color: var(--paint); border: 1px solid var(--line-2); border-radius: var(--r-1); padding: 5px 8px; font: inherit; }
+  input[type="number"] { width: 4.5em; }
+  #bn-place { width: 16em; }
+  .frame-wrap canvas { width: 100%; height: auto; display: block; border-radius: var(--r-3); cursor: crosshair; background: var(--asphalt-0); }
+  .bar { height: 8px; background: var(--asphalt-0); border-radius: 4px; overflow: hidden; margin: var(--sp-2) 0; }
+  .bar i { display: block; height: 100%; width: 0; background: var(--zebra); transition: width .3s; }
+  .rep-grid { display: grid; gap: var(--sp-4); grid-template-columns: 1fr; }
+  @media (min-width: 1000px) { .rep-grid { grid-template-columns: 1.7fr 1fr; } }
+  .vid-wrap { position: relative; border-radius: var(--r-3); overflow: hidden; background: #000; }
+  .vid-wrap video { width: 100%; display: block; }
+  .vid-wrap canvas { position: absolute; pointer-events: none; }
+  .live-n { position: absolute; right: 12px; top: 12px; background: rgba(13, 14, 16, .88); color: var(--paint); padding: 8px 12px; border-radius: var(--r-2); text-align: right; }
+  .live-n .v { font-size: 2rem; font-weight: 700; display: block; line-height: 1; }
+  .live-n .l { font-size: .8rem; color: var(--paint-2); }
+  .big { margin: 0; }
+  .big .v { font-size: 3rem; font-weight: 700; }
+  .big .l { color: var(--paint-2); }
+  .row { display: flex; flex-wrap: wrap; gap: var(--sp-3); align-items: center; margin-top: var(--sp-3); color: var(--paint-2); font-size: .9rem; }
+  .mt { margin-top: var(--sp-4); }
+  #bn-minutes { width: 100%; height: auto; display: block; }
+</style>
+
+<style is:global>
+  table.t { width: 100%; border-collapse: collapse; font-size: .875rem; }
+  table.t th, table.t td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  table.t th { color: var(--muted); font-weight: 600; font-size: .78rem; background: var(--asphalt-0); }
+  table.t td.num { font-family: var(--font-mono); text-align: right; }
+</style>

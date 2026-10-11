@@ -1,0 +1,13 @@
+{
+  "method": "a vehicle is counted once, when its track crosses the line (the bottom centre of its box raised by 15% of its height); the browser detector and tracker of the audit (YOLO26s, 960 x 544, 5 frames a second, ByteTrack)",
+  "reference": "our offline pipeline from the elimination stage: YOLO26m at 1280 px, 10 frames a second, ByteTrack, on the same clips and the same line",
+  "clips": [
+    { "clip": "C3896", "light": "midday", "seconds": 340, "browser": 130, "reference": 130 },
+    { "clip": "C3905", "light": "dusk", "seconds": 128, "browser": 55, "reference": 59 }
+  ],
+  "browserTotal": 185,
+  "referenceTotal": 189,
+  "agreement": 0.979,
+  "handCount": null,
+  "text": "On two sample clips of a Tashkent junction, the count in this browser (YOLO26s, 5 frames a second) against our heavier offline pipeline (YOLO26m at 1280 px, 10 frames a second) on the same line: 130 and 130 vehicles at midday (5 min 40 s), 55 and 59 at dusk (2 min 8 s), 185 against 189 in all (97.9%). That is agreement between two models, not a hand count. On your own video every counted vehicle turns green as it crosses the line, and the Missed and Not a vehicle buttons correct the count by eye; the log keeps the correction, so you see how often the model needed one."
+}
