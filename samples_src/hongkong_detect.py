@@ -94,14 +94,18 @@ def one_round(model, cams, state, series):
     return new
 
 
-def build(cams, series):
+def build(cams, series, state=None):
     nodes = load_nodes()
+    boxes = (state or {}).get("boxes", {})
     out = []
     for c in cams:
+        ser = sorted(series.get(c["id"], []), key=lambda x: x["t"])
         out.append({"id": c["id"], "name": c["name"], "lat": c["lat"], "lon": c["lon"],
                     "imageUrl": c["imageUrl"],
                     "node": nearest_node(nodes, c["lon"], c["lat"]) if nodes else None,
-                    "series": sorted(series.get(c["id"], []), key=lambda x: x["t"])})
+                    # the vehicle boxes on the last counted snapshot (media/hongkong/<id>.jpg)
+                    "last": {"t": ser[-1]["t"] if ser else None, "boxes": [[round(v) for v in b[:4]] for b in boxes.get(c["id"], [])]},
+                    "series": ser})
     return {"source": SOURCE, "district": "Kwun Tong, Hong Kong", "center": CENTER,
             "cameras": out}
 
@@ -131,7 +135,7 @@ def main():
         t0 = time.time()
         new = one_round(model, cams, state, series)
         write_json(STATE, state)
-        obj = build(cams, series)
+        obj = build(cams, series, state)
         write_json(OUT, obj, separators=(",", ":"))
         total = sum(len(c["series"]) for c in obj["cameras"])
         log("round: %d new points, %d total, %.0f s" % (new, total, time.time() - t0))

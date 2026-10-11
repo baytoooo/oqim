@@ -13,6 +13,8 @@ interface Camera {
   lon: number;
   imageUrl: string;
   node?: number;
+  /** Vehicle boxes on the last counted snapshot, media/hongkong/<id>.jpg (320 x 240). */
+  last?: { t: string | null; boxes: number[][] };
   series: { t: string; vehicles: number; standing?: number; density?: number }[];
 }
 interface District {
@@ -238,6 +240,14 @@ function draw(): void {
     .join("")}</tbody></table>`;
 }
 
+/** The counted snapshot with the boxes the detector found on it (SVG over the image, 320 x 240). */
+function counted(c: Camera, cls = ""): string {
+  const boxes = (c.last?.boxes ?? []).map(([x1, y1, x2, y2]) => `<rect x="${x1}" y="${y1}" width="${x2 - x1}" height="${y2 - y1}" fill="none" stroke="#ffb224" stroke-width="2"/>`).join("");
+  return `<div class="snap ${cls}"><img src="/media/hongkong/${c.id}.jpg" alt="Snapshot of the camera ${c.name} as counted" loading="lazy" /><svg viewBox="0 0 320 240" preserveAspectRatio="none" aria-hidden="true">${boxes}</svg></div>`;
+}
+const hkt = (t: string | null | undefined) => (t ? new Date(t).toLocaleTimeString("en-GB", { timeZone: "Asia/Hong_Kong", hour: "2-digit", minute: "2-digit" }) + " HKT" : "");
+let flyTo: (c: Camera) => void = () => undefined;
+
 function showCamera(c: Camera): void {
   const l = cameraLoad(c, false);
   const v = c.series.map((p) => p.vehicles);
@@ -245,11 +255,34 @@ function showCamera(c: Camera): void {
   const W = 300, H = 48;
   const pts = v.map((y, i) => `${(i / Math.max(1, v.length - 1)) * W},${H - (y / max) * (H - 4) - 2}`).join(" ");
   const live = c.imageUrl.includes("tdcctv") ? `${c.imageUrl}?t=${Math.floor(Date.now() / 60000)}` : c.imageUrl;
-  const lastT = c.series[c.series.length - 1]?.t ?? "";
+  const n = c.last?.boxes.length ?? l.now;
   $("camera").innerHTML = `<p><strong>${c.name}</strong></p>
-    <img src="${live}" alt="Latest image of the camera ${c.name}" crossorigin="anonymous" onerror="this.src='/media/hongkong/${c.id}.jpg'" />
+    ${counted(c)}
+    <p class="hint">Counted by OQIM at ${hkt(c.last?.t)}: <strong>${n} vehicle${n === 1 ? "" : "s"}</strong> (orange boxes). <a href="${live}" target="_blank" rel="noopener">This camera now, live from the Transport Department</a>.</p>
     <svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="#f3c316" stroke-width="2" /></svg>
-    <p class="hint">Vehicles on the last snapshot (${lastT.replace("T", " ").replace("Z", " UTC")}): <strong>${l.now}</strong>. Forecast for 10 minutes ahead (Holt's smoothing): <strong>${Number.isFinite(l.forecast) ? l.forecast.toFixed(1) : "n/a"}</strong>. Backtest on ${l.n} snapshots: mean error ${Number.isFinite(l.mae) ? l.mae.toFixed(2) : "n/a"} vehicles, against ${Number.isFinite(l.naive) ? l.naive.toFixed(2) : "n/a"} for "same as last".</p>`;
+    <p class="hint">Vehicles on each of its ${v.length} snapshots today. Forecast for 10 minutes ahead (Holt's smoothing): <strong>${Number.isFinite(l.forecast) ? l.forecast.toFixed(1) : "n/a"}</strong>. Backtest on ${l.n} snapshots: mean error ${Number.isFinite(l.mae) ? l.mae.toFixed(2) : "n/a"} vehicles, against ${Number.isFinite(l.naive) ? l.naive.toFixed(2) : "n/a"} for "same as last".</p>`;
+  document.querySelectorAll<HTMLElement>("#camwall .cw").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.id === c.id)));
+}
+
+/** Every camera of the district with what it counted, busiest first. */
+function cameraWall(): void {
+  const box = $("camwall");
+  const cams = [...district.cameras].sort((a, b) => (b.last?.boxes.length ?? 0) - (a.last?.boxes.length ?? 0));
+  box.innerHTML = "";
+  for (const c of cams) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "cw";
+    b.dataset.id = c.id;
+    const n = c.last?.boxes.length ?? 0;
+    b.innerHTML = `${counted(c, "small")}<span class="cw-n">${n}</span><span class="cw-name"></span>`;
+    b.querySelector(".cw-name")!.textContent = c.name.replace(/\s*\[.*\]$/, "");
+    b.addEventListener("click", () => {
+      showCamera(c);
+      flyTo(c);
+    });
+    box.append(b);
+  }
 }
 
 // ---------------------------------------------------------------- setup
@@ -379,7 +412,10 @@ async function main(): Promise<void> {
   $("status").textContent = `${district.district}: ${district.cameras.length} cameras, ${parksAll.length} car parks, ${liveNote}. Placing drivers`;
   await new Promise((ok) => setTimeout(ok, 30));
   run();
-  if (district.cameras[0]) showCamera(district.cameras[0]);
+  flyTo = (c) => map.easeTo({ center: [c.lon, c.lat], zoom: Math.max(map.getZoom(), 15) });
+  cameraWall();
+  const busiest = [...district.cameras].sort((a, b) => (b.last?.boxes.length ?? 0) - (a.last?.boxes.length ?? 0))[0];
+  if (busiest) showCamera(busiest);
 }
 
 main().catch((e) => {

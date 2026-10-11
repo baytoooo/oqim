@@ -40,6 +40,11 @@ import Base from "../layouts/Base.astro";
         <div id="parks"></div>
       </div>
     </div>
+    <div class="panel panel-pad wall">
+      <p class="k">All the district's cameras, as OQIM counted their last snapshot (orange: vehicles found), busiest first</p>
+      <div id="camwall" class="camwall"></div>
+      <p class="hint">The Transport Department publishes a 320 x 240 snapshot of each camera every 2 minutes and greys out everything but the carriageway. On images this small and masked the detector (YOLO26m at 960 px) misses some vehicles, mostly far away or cut by a mask, so the counts are a lower bound; they set the road load relative to each camera's own busiest snapshots.</p>
+    </div>
     <p class="hint notes" id="notes"></p>
   </section>
 </Base>
@@ -66,6 +71,7 @@ import Base from "../layouts/Base.astro";
   .mode[aria-pressed="true"] { background: var(--zebra); border-color: var(--zebra); color: var(--ink); }
   .hint { color: var(--muted); font-size: .875rem; margin: var(--sp-2) 0 var(--sp-3); }
   .notes { max-width: 115ch; margin-block: var(--sp-4) var(--sp-7); }
+  .wall { margin-top: var(--sp-4); }
 </style>
 
 <style is:global>
@@ -77,6 +83,14 @@ import Base from "../layouts/Base.astro";
   .good { color: var(--sig-green); }
   .bad { color: var(--sig-red); }
   #camera img { width: 100%; border-radius: var(--r-2); display: block; }
+  .snap { position: relative; }
+  .snap img { width: 100%; display: block; border-radius: var(--r-2); }
+  .snap svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .camwall { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  .cw { position: relative; background: var(--asphalt-2); border: 1px solid var(--line); border-radius: var(--r-2); padding: 4px; text-align: left; color: var(--paint); cursor: pointer; font: inherit; }
+  .cw[aria-pressed="true"] { border-color: var(--zebra); box-shadow: 0 0 0 1px var(--zebra); }
+  .cw .cw-n { position: absolute; right: 8px; top: 8px; background: rgba(13, 14, 16, .88); border-radius: 4px; padding: 1px 6px; font-family: var(--font-mono); font-size: .85rem; }
+  .cw .cw-name { display: block; font-size: .72rem; color: var(--paint-2); margin-top: 4px; line-height: 1.25; }
   #camera .spark { width: 100%; height: 48px; display: block; margin-top: 6px; }
   .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
 </style>
