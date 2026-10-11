@@ -678,6 +678,31 @@ function renderPcd(a: Audit): void {
     }
     parts.push(`<text x="${left - 6}" y="${top + 4}" text-anchor="end">${fmt(cycleMax, 0)} s</text><text x="${left - 6}" y="${top + rowH}" text-anchor="end">0</text>`);
   });
+  // per green: vehicles waiting when it began, served during it, and left for the next one
+  const cyc: string[] = [];
+  const CH = 110;
+  usable.forEach((ap, k) => {
+    const rows = ap.greens.filter((g) => g.end <= a.duration).map((g) => {
+      const queued = ap.crossings.filter((c) => c.arrival < g.start - 0.5 && c.t >= g.start - 0.5).length;
+      const served = ap.crossings.filter((c) => c.t >= g.start && c.t < g.end + 3).length;
+      const left = ap.crossings.filter((c) => c.arrival < g.start - 0.5 && c.t > g.end + 3).length;
+      return { g, queued, served, left };
+    });
+    const maxN = Math.max(1, ...rows.map((r) => Math.max(r.served, r.queued)));
+    const top = 10 + k * (CH + 34);
+    cyc.push(`<text x="0" y="${top + 14}">${esc(ap.name.slice(0, 14))}</text>`);
+    rows.forEach((r) => {
+      const cx = x(r.g.start), w = Math.max(6, x(r.g.end) - x(r.g.start) - 4);
+      const hS = (CH * r.served) / maxN, hQ = (CH * r.queued) / maxN;
+      cyc.push(`<rect x="${cx}" y="${top + CH - hS}" width="${w}" height="${hS}" fill="var(--sig-green)" opacity=".75"><title>${r.served} served</title></rect>`);
+      cyc.push(`<rect x="${cx + w * 0.25}" y="${top + CH - hQ}" width="${w * 0.5}" height="${hQ}" fill="var(--zebra)" opacity=".9"><title>${r.queued} waiting at the start of green</title></rect>`);
+      if (r.left) cyc.push(`<text x="${cx + w / 2}" y="${top - 2}" text-anchor="middle" fill="var(--sig-red)">${r.left} left</text>`);
+    });
+    cyc.push(`<line x1="${left}" x2="${W - 10}" y1="${top + CH}" y2="${top + CH}" stroke="var(--line-2)" />`);
+  });
+  const cycH = usable.length * (CH + 34) + 10;
   $("pcd").innerHTML = `<div class="pcd-wrap"><svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Purdue coordination diagram per approach">${parts.join("")}</svg></div>
+    <p class="k" style="margin-top:16px">Each green: vehicles waiting when it began (yellow), served during it (green), left for the next green (red, a split failure)</p>
+    <div class="pcd-wrap"><svg viewBox="0 0 ${W} ${cycH}" width="100%" role="img" aria-label="Vehicles served and left per green">${cyc.join("")}</svg></div>
     <p class="hint">The chart traffic engineers in the US read from controller logs (ATSPM); here it comes from the video. One column per cycle, from the start of red. Dots: vehicles reaching the stop line, at the second of the cycle they arrived; green when the light was green. Green line: when the green began. Dots below it waited at a red; coordination with the junction upstream moves them above it.</p>`;
 }
