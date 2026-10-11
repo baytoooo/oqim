@@ -1,0 +1,81 @@
+---
+/**
+ * Page head: kicker, h1 and the default slot (lede and anything under it) on the left; on the right a still
+ * from public/media in a camera frame (`media`), or the `aside` slot. Without either it is one column.
+ */
+import SignalHead from "./SignalHead.astro";
+
+interface Hud {
+  text: string;
+  /** CSS colour of a 10 px square before the text */
+  swatch?: string;
+}
+interface Media {
+  src: string;
+  srcset?: string;
+  sizes?: string;
+  alt: string;
+  width: number;
+  height: number;
+  /** object-position of the still */
+  position?: string;
+}
+interface Props {
+  kicker: string;
+  title: string;
+  media?: Media;
+  /** up to 4 mono chips over the still, bottom left */
+  hud?: (string | Hud)[];
+  /** extra classes on the still's frame: "viewfinder", "scan" */
+  cam?: string;
+  /** a small signal head instead of the kicker stripe */
+  lamp?: "red" | "amber" | "green" | "red-amber" | "off";
+  /** the text column may use the full width (no aside) */
+  wide?: boolean;
+}
+const { kicker, title, media, hud = [], cam = "", lamp, wide = false } = Astro.props;
+const hasAsideSlot = Astro.slots.has("aside");
+const showMedia = !!media && !wide;
+const showAside = !media && hasAsideSlot && !wide;
+const huds = hud.slice(0, 4).map((h) => (typeof h === "string" ? { text: h } : h));
+const scan = cam.split(/\s+/).includes("scan");
+---
+<header class:list={["page-head wrap", { "has-aside": showMedia || showAside, wide }]}>
+  <div class="ph-text">
+    <p class:list={["kicker", { "has-lamp": !!lamp }]}>
+      {lamp && <SignalHead phase={lamp} size={10} />}
+      <span>{kicker}</span>
+    </p>
+    <h1>{title}</h1>
+    <slot />
+  </div>
+  {showMedia && media && (
+    <figure class:list={["ph-media cam", cam]}>
+      <img
+        src={media.src}
+        srcset={media.srcset}
+        sizes={media.sizes}
+        alt={media.alt}
+        width={media.width}
+        height={media.height}
+        loading="eager"
+        decoding="async"
+        fetchpriority="high"
+        style={media.position ? `object-position:${media.position}` : undefined}
+      />
+      {scan && <span class="cam-scan" aria-hidden="true"></span>}
+      {huds.length > 0 && (
+        <figcaption class="cam-hud">
+          {huds.map((h) => (
+            <span>{h.swatch && <i class="cam-sw" style={`background:${h.swatch}`}></i>}{h.text}</span>
+          ))}
+        </figcaption>
+      )}
+    </figure>
+  )}
+  {showAside && (
+    <div class="ph-aside">
+      <slot name="aside" />
+    </div>
+  )}
+</header>

@@ -1,0 +1,322 @@
+---
+import Base from "../layouts/Base.astro";
+import PageHead from "../components/PageHead.astro";
+import SecHead from "../components/SecHead.astro";
+import SectionIndex from "../components/SectionIndex.astro";
+import { ELIMINATION_URL } from "../config";
+import { f, loadAudits, mmss, modeOf, weakCheck } from "../lib/audits";
+
+const { source, clips } = loadAudits();
+
+const index = [
+  { id: "architecture", n: "01", t: "Architecture" },
+  { id: "measures", n: "02", t: "Measures" },
+  { id: "replay", n: "03", t: "Replay and plans" },
+  { id: "check", n: "04", t: "Model check" },
+  { id: "fails", n: "05", t: "Where it fails" },
+  { id: "privacy", n: "06", t: "Privacy, speed, cost" },
+  { id: "licences", n: "07", t: "Licences" },
+];
+
+const flow = [
+  { k: "Page", t: "Video", d: "Your file. If the browser cannot decode it (the sample camera writes 10-bit 4:2:2 H.264), ffmpeg.wasm converts it in the browser first." },
+  { k: "Page", t: "Frames", d: "Drawn from a <video> element at 5 frames per second, scaled to 1920 px wide. The page also reads the colours inside each signal head box." },
+  { k: "Web Worker", t: "Detect and track", d: "YOLO26s exported to ONNX (960 x 544 input), in ONNX Runtime Web on WebGPU, or on WebAssembly where WebGPU is missing. Then ByteTrack." },
+  { k: "Audit core", t: "Audit", d: "Plain TypeScript functions with no DOM: tracks.ts, phases.ts, sim.ts, audit.ts. The same code runs in the tests under Node." },
+];
+
+const modules = [
+  { f: "src/pipeline/worker.ts, detector.ts, tracker.ts", d: "The ONNX session, box parsing and ByteTrack (a port of the Ultralytics 8.4 tracker). Reused from our elimination-stage system." },
+  { f: "src/oqim/tracks.ts", d: "Vehicle tracks from the boxes, when each one stood still, and when it crossed a stop line." },
+  { f: "src/oqim/phases.ts", d: "The lights of each approach: from a signal head's pixels, or from the traffic when no head is in view. The cycle length." },
+  { f: "src/oqim/sim.ts", d: "The point-queue replay and the four controllers (measured, fixed, actuated, predictive)." },
+  { f: "src/oqim/audit.ts", d: "Puts it together: measures per approach, phase groups, the Webster and tuned plans, the five modes and the model check." },
+];
+
+const measures = [
+  { k: "Vehicle", d: "A track of a car, motorcycle, bus or truck (COCO classes 2, 3, 5, 7) seen in at least 5 analysed frames. Its point is the bottom centre of the box raised by 15% of the box height, smoothed over 5 frames." },
+  { k: "Standing still", d: "Speed under STOP_REL = 0.15 of the vehicle's own size per second, where size is the square root of the box area. A car is about 4.5 m long, so this is about 0.7 m/s. Being relative to size, it holds near the camera and far from it." },
+  { k: "Crossing", d: "The step between two frames in which the point crosses the stop line (up to 8% past its ends). A track counts once per line, at its first crossing, and only if it crosses from the side most vehicles come from. So a line should cover the lanes of one approach only." },
+  { k: "Arrival", d: "Crossing time minus the time the vehicle stood still before the line: when it would have reached the line without stopping. A vehicle already standing when its track began is marked censored, because its arrival is too late." },
+  { k: "Wait", d: "The mean time vehicles stood still before the line." },
+  { k: "Lights from a head", d: "In each frame, red is r - max(g, b) and green is g - r (the green LEDs here are bluish), each the mean of the 12 strongest pixels in the head box. Each colour is scaled between its 20th and 97th percentile over the clip and counts as lit above 0.5. A colour whose two levels differ by under 12 never lights. Runs under 0.7 s between two runs of one light are smoothed away, and dark spells of up to 1.6 s inside green (the flashing green) stay green." },
+  { k: "Lights from the traffic", d: "With no head in view: crossings within 7 s of each other make one green, unless a vehicle stood at the line through a pause of more than 3 s with nothing crossing. The green opens 2 s before its first crossing if that vehicle had been standing (1 s if not) and closes 1.5 s after its last. The rest is red." },
+  { k: "Arrivals on green", d: "The share of vehicles whose arrival time falls inside a green. ATSPM reports the same measure from detector logs." },
+  { k: "Cycle", d: "The median time between the starts of greens at least 4 s long, keeping gaps of 20 to 300 s." },
+  { k: "Discharge rate", d: "For each green of 10 s or more with at least 4 vehicles queued at its start: the most crossings in any 10 s of it, for all lanes together. Headway is 10 s over that count (3 or more). The median over the greens, kept between 0.3 and 5 s, needs 2 greens; otherwise 2.0 s is assumed." },
+  { k: "Start-up", d: "The median time from the start of green to the first queued vehicle crossing, between 0 and 6 s; 2 s if it cannot be measured." },
+  { k: "Red-light run", d: "A crossing on red more than 1 s after the light turned red, so a late amber does not count. Only with a head in view. These vehicles do not wait for the signal, so the replay leaves them out." },
+  { k: "Queue", d: "Vehicles standing before the line, counted once a second: tracks that have arrived and not yet crossed. The audit reports the largest." },
+  { k: "Phase groups and intergreen", d: "Approaches whose greens overlap by at least half of the smaller one's green time share a group. The intergreen is the median gap from one group's green to the next, between 2 and 8 s; 4 s if it cannot be measured." },
+];
+
+const plans = [
+  { k: "Now", d: "The lights as read from the video." },
+  { k: "Webster plan", d: "Webster (1958): cycle C0 = (1.5L + 5) / (1 - Y), kept between 40 and 150 s, and 150 s when Y is 0.9 or more. L is the lost time (intergreens and start-ups); Y is the sum, over the phase groups, of the busiest approach's flow over its saturation flow (3600 / headway). The green is split in proportion to each group's flow ratio, with at least 7 s." },
+  { k: "Tuned fixed plan", d: "Cycles from 40 to 150 s in 5 s steps, each split as Webster's, run on the replay. The one with the fewest vehicle-hours of waiting wins." },
+  { k: "Actuated", d: "After a 7 s minimum, the green ends once no vehicle waits and none has arrived in the last 3 s, or at a maximum of 1.6 times the tuned green (30 s at least)." },
+  { k: "OQIM predictive", d: "Starts from the tuned plan. After the 7 s minimum, once a second, it replays the next 30 s twice: ending the green now, or holding it 1 s more, with the tuned plan after that. The cost is the waiting vehicle-seconds plus 10 s for each vehicle still waiting at the end. It ends the green when that costs no more than holding it. The arrivals of those 30 s are taken as known; in the field they would come from the camera at the junction upstream." },
+];
+
+const fails = [
+  { t: "The camera has to see the stop line", d: "And ideally the vehicle signal head. Without a head, the lights come from when queues move off, which is less exact." },
+  { t: "At least 2 cycles", d: "About 3 minutes of video. With less, the cycle, the discharge rate and the replay are not reliable (see C3905 above)." },
+  { t: "Occlusion in long queues", d: "Vehicles hidden behind a bus or a truck lose their track. A new track starts standing, so its arrival is too late and it is left out of the check." },
+  { t: "Wide approaches", d: "An approach is drawn as one line. Turning lanes with their own signal are not told apart." },
+  { t: "Free right turns on red", d: "They count as red crossings. They are left out of the replay, but they also show up among the red-light runs." },
+  { t: "Night and rain", d: "Not yet measured on our own test set." },
+  { t: "Predictive needs the future", d: "The predictive mode assumes the arrivals of the next 30 s are known. On one clip they come from the clip itself; in the field they need a camera upstream." },
+];
+
+const licences = [
+  { k: "YOLO26s weights (Ultralytics), pretrained on COCO, exported to ONNX", l: "AGPL-3.0", n: "So the source of this site is AGPL-3.0 too." },
+  { k: "OQIM site and audit code", l: "AGPL-3.0-only", n: "As package.json states." },
+  { k: "ByteTrack port (src/pipeline/tracker.ts)", l: "AGPL-3.0", n: "Ported from Ultralytics 8.4, which builds on ByteTrack by Zhang et al. (MIT); its lapjv solver is from the lap package (BSD-2-Clause)." },
+  { k: "ONNX Runtime Web", l: "MIT", n: "Runs the detector in the browser." },
+  { k: "ffmpeg.wasm", l: "MIT (@ffmpeg/ffmpeg), GPL-2.0-or-later (@ffmpeg/core-mt)", n: "Converts clips the browser cannot play." },
+  { k: "Overpass and Barlow Condensed fonts", l: "OFL-1.1", n: "" },
+  { k: "Sample clips", l: "No licence stated", n: "The organisers' footage of one Tashkent junction, given for the elimination task. Used here as samples only." },
+];
+---
+<Base title="Method" description="How OQIM audits a signalised junction from one video: the browser detector and tracker, the measures, the replay model and its check, the plans it compares, and where it fails." active="method">
+  <PageHead kicker="Method" title="How OQIM audits a junction" wide>
+    <p class="lede">What runs where, every measure and the formula behind it, the replay that checks itself against the video, and the cases where it goes wrong.</p>
+  </PageHead>
+  <SectionIndex items={index} />
+
+  <section class="section wrap" id="architecture">
+    <SecHead num="01" title="Architecture">
+      <p>Everything runs in the browser tab. There is no server step: the site is static files, and the model is one of them.</p>
+    </SecHead>
+    <ol class="flow" role="list" data-reveal>
+      {flow.map((s, i) => (
+        <li class="panel flow-step">
+          <span class="fl-k">{s.k}</span>
+          <span class="fl-t">{s.t}</span>
+          <span class="fl-d">{s.d}</span>
+          {i < flow.length - 1 && <span class="fl-arrow" aria-hidden="true"></span>}
+        </li>
+      ))}
+    </ol>
+    <div class="table-scroll cards-sm mods" data-reveal>
+      <table>
+        <thead><tr><th scope="col">File</th><th scope="col">What it does</th></tr></thead>
+        <tbody>
+          {modules.map((m) => (
+            <tr><th scope="row"><code>{m.f}</code></th><td class="wide-sm">{m.d}</td></tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="section wrap" id="measures">
+    <SecHead num="02" title="What is measured, and how">
+      <p>The constants below are the ones in <code>src/oqim/</code>. Distances are in work pixels (the frame at 1920 px wide), times in seconds of video.</p>
+    </SecHead>
+    <dl class="defs" data-reveal>
+      {measures.map((m) => (
+        <div class="def">
+          <dt>{m.k}</dt>
+          <dd>{m.d}</dd>
+        </div>
+      ))}
+    </dl>
+  </section>
+
+  <section class="section wrap" id="replay">
+    <SecHead num="03" title="The replay, and the plans it compares">
+      <p>Each approach is a queue at its stop line (a point queue), stepped every 0.1 s. A vehicle joins it at its measured arrival time. On green it leaves: the first of a standing queue one start-up time after the green begins, the rest one headway apart. An approach earns one departure per headway and may save up to BURST = 3, so the lanes of a wide approach can leave side by side.</p>
+      <p>Every plan runs the measured lights until the clip's first green, so all plans start from the same queues. Mean delay is the total waiting time over the vehicles; a vehicle still waiting when the clip ends counts until the end.</p>
+    </SecHead>
+    <dl class="defs plans" data-reveal>
+      {plans.map((m) => (
+        <div class="def">
+          <dt>{m.k}</dt>
+          <dd>{m.d}</dd>
+        </div>
+      ))}
+    </dl>
+    <div class="callout" data-reveal>
+      <p class="callout-k">Phases out of view</p>
+      <p>The camera usually sees one street. The part of the cycle that the approaches in view do not use goes to phases out of view (the cross street). Webster's formula counts them as one more group, loaded at the same degree of saturation as the groups in view, because their demand is unknown. That keeps their share of the cycle instead of giving it away.</p>
+    </div>
+  </section>
+
+  <section class="section wrap" id="check">
+    <SecHead num="04" title="The model check">
+      <p>Before the replay may judge a plan, it runs under the measured lights and must give back the crossings on the video. For every vehicle that is not censored, the error is the gap between its departure in the model and its crossing on the video; the table shows the median. It also compares the mean wait in the model with the wait measured on the video.</p>
+      <p class="src"><span class="src-k">Source</span> {source}.</p>
+    </SecHead>
+    {clips.length > 0 && (
+      <div class="table-scroll cards-sm" data-reveal>
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Clip</th>
+              <th scope="col" class="num">Length</th>
+              <th scope="col" class="num">Cycle</th>
+              <th scope="col" class="num">Vehicles checked</th>
+              <th scope="col" class="num">Median departure error</th>
+              <th scope="col" class="num">Wait, model</th>
+              <th scope="col" class="num">Wait, measured</th>
+              <th scope="col">Note</th>
+            </tr>
+          </thead>
+          <tbody>
+            {clips.map((c) => (
+              <tr class:list={{ weak: weakCheck(c) }}>
+                <th scope="row" class="mono">{c.clip}</th>
+                <td class="num" data-label="Length">{mmss(c.duration)}</td>
+                <td class="num" data-label="Cycle">{f(c.cycle, 0)} s</td>
+                <td class="num" data-label="Checked">{c.check.vehicles}</td>
+                <td class="num" data-label="Departure error">{f(c.check.departureError, 2)} s</td>
+                <td class="num" data-label="Wait, model">{f(c.check.modelWait)} s</td>
+                <td class="num" data-label="Wait, measured">{f(c.check.measuredWait)} s</td>
+                <td class="wide-sm" data-label="Note">{weakCheck(c) ? "Under 3 minutes; the replay does not fit, so its plans are not trusted." : ""}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
+
+    {clips.length > 0 && (
+      <>
+        <h3 class="sub">Mean delay per plan on the replay</h3>
+        <div class="table-scroll cards-sm" data-reveal>
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Clip</th>
+                {clips[0].modes.map((m) => <th scope="col" class="num">{m.label}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {clips.map((c) => {
+                const low = Math.min(...c.modes.map((m) => m.meanDelay));
+                return (
+                  <tr>
+                    <th scope="row" class="mono">{c.clip}</th>
+                    {clips[0].modes.map((h) => {
+                      const m = modeOf(c, h.key);
+                      return (
+                        <td class:list={["num", { low: m && m.meanDelay === low }]} data-label={h.label}>
+                          {f(m?.meanDelay)} s{m?.cycle != null && h.key !== "measured" && <span class="cyc"> / {f(m.cycle, 0)} s cycle</span>}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <p class="note">Seconds of waiting per vehicle; the lowest on each clip is marked. On these clips Webster's formula did worse than the timing already on the street, which is why every plan is checked on the replay before it is recommended.</p>
+      </>
+    )}
+  </section>
+
+  <section class="section wrap" id="fails">
+    <SecHead num="05" title="Where it fails">
+      <p>Known limits, from our own runs on the sample junction. Some also show up as warnings in the audit, such as a clip with fewer than two cycles.</p>
+    </SecHead>
+    <ul class="fails" role="list">
+      {fails.map((x, i) => (
+        <li class="callout warn" data-reveal style={`--i:${i}`}>
+          <p class="fl-title">{x.t}</p>
+          <p>{x.d}</p>
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  <section class="section wrap" id="privacy">
+    <SecHead num="06" title="Privacy, speed and cost" />
+    <div class="three">
+      <div class="plate" data-reveal>
+        <span class="pk">Privacy</span>
+        <p class="plate-text">No number plates and no faces are read. The detector gives boxes and a class, and the audit keeps only the vehicle tracks. The video never leaves the device: it is not uploaded anywhere.</p>
+      </div>
+      <div class="plate" data-reveal style="--i:1">
+        <span class="pk">Speed</span>
+        <p class="plate-text">The analysis runs at 5 frames per second of video. On an Apple M5 laptop with WebGPU it takes about 1 minute per minute of 1080p video. On WebAssembly and on phones it is slower.</p>
+      </div>
+      <div class="plate" data-reveal style="--i:2">
+        <span class="pk">Cost</span>
+        <p class="plate-text">Zero server cost per audit. Inference runs on the user's device, so a city with more cameras does not need more servers. The site itself is static files.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section wrap" id="licences">
+    <SecHead num="07" title="Licences">
+      <p>The browser detector, the tracker port, the worker and the video conversion come from our <a href={ELIMINATION_URL} rel="noopener" target="_blank">elimination-stage system</a>, as the README declares.</p>
+    </SecHead>
+    <div class="table-scroll cards-sm" data-reveal>
+      <table>
+        <thead><tr><th scope="col">What</th><th scope="col">Licence</th><th scope="col">Note</th></tr></thead>
+        <tbody>
+          {licences.map((l) => (
+            <tr>
+              <th scope="row">{l.k}</th>
+              <td class="wide-sm" data-label="Licence">{l.l}</td>
+              <td class="wide-sm" data-label="Note">{l.n}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .src { font-size: .875rem; color: var(--muted); }
+  .src-k { font: 600 .75rem/1.3 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--paint-2); margin-right: 6px; }
+
+  /* architecture: four steps joined by arrows */
+  .flow { list-style: none; margin: 0 0 20px; padding: 0; display: grid; gap: 22px; }
+  @media (min-width: 900px) { .flow { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 28px; } }
+  .flow > * { min-width: 0; }
+  .flow-step { position: relative; display: grid; gap: 6px; align-content: start; padding: 16px 18px 18px; }
+  .fl-k { font: 600 .75rem/1.3 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--zebra); }
+  .fl-t { font: 600 1.375rem/1.1 var(--font-display); font-synthesis: none; }
+  .fl-d { font-size: .9375rem; line-height: 1.5; color: var(--paint-2); }
+  .fl-arrow {
+    position: absolute; left: 50%; bottom: -19px; width: 16px; height: 16px; transform: translateX(-50%) rotate(90deg);
+    background: var(--paint-2); -webkit-mask: var(--chev) center / contain no-repeat; mask: var(--chev) center / contain no-repeat;
+  }
+  @media (min-width: 900px) {
+    .fl-arrow { left: auto; right: -23px; bottom: auto; top: 50%; transform: translateY(-50%); }
+  }
+  .mods th[scope="row"] { white-space: normal; }
+  .mods code { white-space: normal; overflow-wrap: anywhere; }
+
+  /* definitions */
+  .defs { margin: 0; display: grid; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--r-2); overflow: hidden; }
+  .def { display: grid; gap: 4px 24px; padding: 14px 18px; background: var(--asphalt-2); }
+  @media (min-width: 760px) { .def { grid-template-columns: 14rem minmax(0, 1fr); } }
+  .def dt { font-weight: 750; color: var(--paint); }
+  .def dd { margin: 0; color: var(--paint-2); font-size: .9688rem; line-height: 1.6; max-width: 80ch; }
+  .plans { margin-bottom: 20px; }
+
+  /* tables */
+  .sub { margin: 36px 0 12px; }
+  td.low { color: var(--zebra); font-weight: 700; }
+  .cyc { color: var(--muted); font-weight: 400; font-size: .8125rem; }
+  tr.weak > * { color: var(--paint-2); }
+  tr.weak td:last-child { color: var(--sig-amber); }
+  .note { margin: 12px 0 0; max-width: 80ch; font-size: .875rem; color: var(--muted); }
+
+  /* failures */
+  .fails { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+  @media (min-width: 760px) { .fails { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (min-width: 1100px) { .fails { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  .fails > * { min-width: 0; max-width: none; }
+  .fl-title { font-weight: 750; color: var(--paint); }
+
+  .three { display: grid; gap: 14px; }
+  @media (min-width: 860px) { .three { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  .three > * { min-width: 0; }
+  .pk { font: 600 .75rem/1.3 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--zebra); }
+</style>

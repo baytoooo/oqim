@@ -1,0 +1,178 @@
+---
+import Base from "../layouts/Base.astro";
+import { SAMPLES } from "../oqim/samples";
+---
+<Base title="Run an audit" description="Upload a video of a signalised junction: OQIM reads the lights, counts the vehicles and checks new signal plans, in your browser." active="audit">
+  <section class="wrap audit-head">
+    <p class="kicker">Signal audit</p>
+    <h1>Run an audit</h1>
+    <p class="lede">A video of a junction with traffic lights, at least two full cycles (about 3 minutes), from a camera that does not move. Everything runs in this browser: the video is not uploaded anywhere.</p>
+  </section>
+
+  <section class="wrap step" id="pick">
+    <h2 class="step-title"><span class="n">1</span> Choose a video</h2>
+    <div class="pick-grid">
+      <div class="panel panel-pad">
+        <p class="k">Your video</p>
+        <label class="btn primary file-btn">
+          <input type="file" id="file" accept="video/*" />
+          Choose a video file
+        </label>
+        <p class="hint">MP4 or MOV from a phone or a camera. Up to 10 minutes are analysed.</p>
+      </div>
+      <div class="panel panel-pad">
+        <p class="k">Or a sample: one Tashkent junction, the organisers' footage</p>
+        <div class="samples">
+          {SAMPLES.map((s) => (
+            <button class="btn sample" type="button" data-sample={s.name}>
+              <span class="mono">{s.name}</span> <span>{s.label}</span>
+            </button>
+          ))}
+        </div>
+        <p class="hint">Samples come with their stop line and signal head marked; you can change them.</p>
+      </div>
+    </div>
+    <p class="status" id="pick-status" role="status"></p>
+  </section>
+
+  <section class="wrap step" id="setup" hidden>
+    <h2 class="step-title"><span class="n">2</span> Mark the junction</h2>
+    <p class="hint">Draw one stop line per approach, across its lanes only: click at one end, then at the other. Then click the vehicle signal head that controls it (or drag a box around it). An approach with no head in view gets its lights from how its traffic moves.</p>
+    <div class="tools" role="toolbar" aria-label="Marking tools">
+      <button class="btn tool" type="button" data-tool="line" aria-pressed="true">Stop line</button>
+      <button class="btn tool" type="button" data-tool="head" aria-pressed="false">Signal head</button>
+      <button class="btn ghost" type="button" id="undo">Undo</button>
+      <button class="btn ghost" type="button" id="clear">Clear all</button>
+      <label class="limit">Analyse the first <select id="limit">
+        <option value="120">2 min</option>
+        <option value="180">3 min</option>
+        <option value="300">5 min</option>
+        <option value="600" selected>10 min (all)</option>
+      </select></label>
+    </div>
+    <div class="setup-grid">
+      <div class="frame-wrap"><canvas id="frame" aria-label="First frame of the video; click to mark stop lines and signal heads"></canvas></div>
+      <div class="side">
+        <ol class="approaches" id="approaches"></ol>
+        <button class="btn primary run" type="button" id="run" disabled>Run the audit</button>
+        <p class="hint" id="run-hint">Mark at least one stop line.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap step" id="running" hidden>
+    <h2 class="step-title"><span class="n">3</span> Analysing</h2>
+    <div class="panel panel-pad">
+      <div class="bar"><div class="fill" id="fill"></div></div>
+      <p class="mono progress-line"><span id="stage">Starting</span> <span id="pct"></span> <span id="eta"></span></p>
+      <p class="hint" id="backend"></p>
+      <button class="btn ghost" type="button" id="cancel">Cancel</button>
+    </div>
+  </section>
+
+  <section class="wrap step" id="report" hidden>
+    <h2 class="step-title"><span class="n">4</span> Audit</h2>
+    <div id="verdict" class="verdict panel panel-pad"></div>
+    <div class="stats" id="stats"></div>
+    <h3>Signal plans, replayed on this clip's own vehicles</h3>
+    <div id="plans"></div>
+    <p class="hint" id="check"></p>
+    <h3>Lights, crossings and queues</h3>
+    <div class="panel panel-pad"><div id="timeline"></div></div>
+    <div class="video-grid">
+      <div class="frame-wrap"><video id="video" controls muted playsinline></video><canvas id="overlay"></canvas></div>
+      <div>
+        <h3 class="mt0">Approaches</h3>
+        <div id="approach-table"></div>
+      </div>
+    </div>
+    <h3>What it is worth, a year</h3>
+    <div class="panel panel-pad money">
+      <p class="hint">An illustration. Every input is an assumption you can change; the saving per hour comes from the replay above.</p>
+      <div class="inputs">
+        <label>Hours a day with this traffic <input id="m-hours" type="number" value="6" min="0" max="24" step="1" /></label>
+        <label>Days a year <input id="m-days" type="number" value="300" min="0" max="366" step="1" /></label>
+        <label>People per vehicle <input id="m-occ" type="number" value="1.4" min="1" max="10" step="0.1" /></label>
+        <label>Value of an hour, USD <input id="m-vot" type="number" value="2" min="0" step="0.5" /></label>
+        <label>Fuel while waiting, litres an hour <input id="m-fuel" type="number" value="0.8" min="0" step="0.1" /></label>
+        <label>Fuel price, USD a litre <input id="m-price" type="number" value="0.8" min="0" step="0.05" /></label>
+      </div>
+      <p id="money-out" class="money-out"></p>
+    </div>
+    <ul class="warnings" id="warnings"></ul>
+    <p class="actions">
+      <button class="btn" type="button" id="export">Download the audit (JSON)</button>
+      <button class="btn ghost" type="button" id="again">Audit another video</button>
+    </p>
+  </section>
+</Base>
+
+<script>
+  import "../scripts/oqim.ts";
+</script>
+
+<style>
+  .audit-head { padding-block: var(--sp-7) var(--sp-4); }
+  .audit-head h1 { font: 700 clamp(2.4rem, 5vw, 3.6rem)/1 var(--font-display); margin: var(--sp-2) 0 var(--sp-3); }
+  .step { padding-block: var(--sp-4) var(--sp-6); }
+  .step-title { font: 700 1.75rem/1.1 var(--font-display); display: flex; align-items: center; gap: var(--sp-3); margin: 0 0 var(--sp-4); }
+  .step-title .n { display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--zebra); color: var(--ink); font-size: 1.2rem; }
+  .pick-grid { display: grid; gap: var(--sp-4); grid-template-columns: 1fr; }
+  @media (min-width: 860px) { .pick-grid { grid-template-columns: 1fr 1.4fr; } }
+  .k { margin: 0 0 var(--sp-3); color: var(--muted); font-size: .875rem; }
+  .hint { color: var(--muted); font-size: .875rem; margin: var(--sp-3) 0 0; max-width: 80ch; }
+  .file-btn { position: relative; overflow: hidden; cursor: pointer; }
+  .file-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .samples { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+  .sample .mono { color: var(--zebra); }
+  .status { color: var(--paint-2); min-height: 1.5em; }
+  .tools { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; margin: var(--sp-4) 0; }
+  .tool[aria-pressed="true"] { background: var(--zebra); border-color: var(--zebra); color: var(--ink); }
+  .limit { margin-left: auto; color: var(--muted); font-size: .875rem; display: flex; gap: var(--sp-2); align-items: center; }
+  select, input[type="number"] { background: var(--asphalt-3); color: var(--paint); border: 1px solid var(--line-2); border-radius: var(--r-1); padding: 4px 6px; font: inherit; }
+  .setup-grid { display: grid; gap: var(--sp-4); grid-template-columns: 1fr; }
+  @media (min-width: 960px) { .setup-grid { grid-template-columns: 2.4fr 1fr; } }
+  .frame-wrap { position: relative; background: var(--asphalt-0); border-radius: var(--r-3); overflow: hidden; box-shadow: var(--shadow-3); }
+  .frame-wrap canvas#frame { display: block; width: 100%; height: auto; cursor: crosshair; touch-action: none; }
+  .frame-wrap video { display: block; width: 100%; height: auto; }
+  .frame-wrap #overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  .approaches { list-style: none; margin: 0 0 var(--sp-4); padding: 0; display: grid; gap: var(--sp-2); }
+  .run { width: 100%; }
+  .bar { height: 10px; background: var(--asphalt-3); border-radius: 5px; overflow: hidden; }
+  .fill { height: 100%; width: 0; background: var(--stripes); transition: width var(--t-2) linear; }
+  .progress-line { margin: var(--sp-3) 0 0; color: var(--paint-2); }
+  .verdict { font-size: 1.125rem; line-height: 1.5; margin-bottom: var(--sp-4); }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--sp-3); margin-bottom: var(--sp-5); }
+  h3 { font: 700 1.4rem/1.1 var(--font-display); margin: var(--sp-6) 0 var(--sp-3); }
+  h3.mt0 { margin-top: 0; }
+  .video-grid { display: grid; gap: var(--sp-4); grid-template-columns: 1fr; margin-top: var(--sp-5); }
+  @media (min-width: 1000px) { .video-grid { grid-template-columns: 1.5fr 1fr; } }
+  .money .inputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--sp-3); margin: var(--sp-3) 0; }
+  .money label { display: flex; flex-direction: column; gap: 4px; color: var(--muted); font-size: .875rem; }
+  .money-out { font-size: 1.125rem; margin: var(--sp-3) 0 0; }
+  .warnings { color: var(--sig-amber); font-size: .9rem; padding-left: 1.2em; }
+  .actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; margin-top: var(--sp-5); }
+</style>
+
+<style is:global>
+  .ap-item { display: grid; grid-template-columns: auto 1fr auto; gap: var(--sp-2); align-items: center; padding: var(--sp-2) var(--sp-3); background: var(--asphalt-2); border: 1px solid var(--line); border-radius: var(--r-2); }
+  .ap-item .sw { width: 14px; height: 14px; border-radius: 3px; }
+  .ap-item input[type="text"] { width: 100%; background: var(--asphalt-3); color: var(--paint); border: 1px solid var(--line-2); border-radius: var(--r-1); padding: 4px 6px; font: inherit; }
+  .ap-item .row2 { grid-column: 2 / 4; display: flex; gap: var(--sp-2); align-items: center; color: var(--muted); font-size: .8125rem; }
+  .ap-item .x { background: none; border: 0; color: var(--muted); cursor: pointer; font-size: 1.1rem; }
+  .stat { background: var(--asphalt-2); border: 1px solid var(--line); border-radius: var(--r-3); padding: var(--sp-3) var(--sp-4); }
+  .stat .v { font: 700 2rem/1 var(--font-display); }
+  .stat .l { color: var(--muted); font-size: .8125rem; margin-top: 4px; }
+  table.t { width: 100%; border-collapse: collapse; font-size: .9rem; }
+  table.t th, table.t td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.t th { color: var(--muted); font-weight: 600; font-size: .8125rem; background: var(--asphalt-0); }
+  table.t td.num { font-family: var(--font-mono); text-align: right; white-space: nowrap; }
+  table.t tr.best td { background: var(--sig-green-soft); }
+  table.t .note { color: var(--muted); font-size: .8125rem; }
+  .delay-bar { height: 8px; background: var(--paint-2); border-radius: 4px; min-width: 2px; }
+  tr.best .delay-bar { background: var(--sig-green); }
+  .good { color: var(--sig-green); }
+  .bad { color: var(--sig-red); }
+  .scroll-x { overflow-x: auto; }
+  .tl-row text { fill: var(--muted); font: 12px var(--font-mono); }
+</style>

@@ -1,0 +1,190 @@
+---
+import Base from "../layouts/Base.astro";
+import PageHead from "../components/PageHead.astro";
+import { loadTeam } from "../lib/data";
+import { isTodo } from "../lib/format";
+
+const team = loadTeam();
+const initials = (n: string) => n.split(/\s+/).map((p) => p[0]).join("").slice(0, 2).toUpperCase();
+// an empty link or project list is left off the card; "TODO" still shows as a marked gap
+const links = (m: (typeof team.members)[number]) =>
+  [
+    { k: "GitHub", v: m.github },
+    { k: "LinkedIn", v: m.linkedin },
+    { k: "Portfolio", v: m.portfolio },
+  ].filter((l) => l.v);
+const todoCount = team.members.reduce((acc, m) => {
+  const vals = [m.role, m.github, m.linkedin, m.portfolio, ...m.did, ...m.projects.flatMap((p) => [p.name, p.url])];
+  return acc + vals.filter((v) => v && (isTodo(v) || /\bTODO\b/.test(v))).length;
+}, 0);
+
+// the head: a crossing seen from above (viewBox 480 x 300), seven bars turned by -8 degrees, and each
+// member's badge standing on bar 2, 4 or 6 at a different height. Badge centres go out as percentages.
+const VB = { w: 480, h: 300 };
+const BAR_W = 30, BAR_GAP = 18, BARS = 7, BAR_Y = 34, BAR_H = 232, TURN = -8;
+const barsX0 = (VB.w - (BARS * BAR_W + (BARS - 1) * BAR_GAP)) / 2;
+const bars = Array.from({ length: BARS }, (_, i) => ({ x: barsX0 + i * (BAR_W + BAR_GAP), zebra: i % 2 === 0 }));
+const turn = (x: number, y: number) => {
+  const a = (TURN * Math.PI) / 180, cx = VB.w / 2, cy = VB.h / 2;
+  return { x: cx + (x - cx) * Math.cos(a) - (y - cy) * Math.sin(a), y: cy + (x - cx) * Math.sin(a) + (y - cy) * Math.cos(a) };
+};
+const stands = [{ bar: 1, y: 178 }, { bar: 3, y: 104 }, { bar: 5, y: 162 }];
+const badges = team.members.slice(0, 3).map((m, i) => {
+  const st = stands[i];
+  const p = turn(bars[st.bar].x + BAR_W / 2, st.y);
+  return { n: i + 1, name: m.name, initials: initials(m.name), x: p.x, y: p.y, left: (p.x / VB.w) * 100, top: (p.y / VB.h) * 100 };
+});
+---
+<Base title="Team" description={`${team.team}: who we are and who did what.`} active="team">
+  <PageHead kicker="Team" title={team.team}>
+    <p class="lede">{team.members.length} students from {team.university}. Most of the work below is from the elimination stage, the traffic event system OQIM is built on.</p>
+    {todoCount > 0 && <p class="todo-note mono">{todoCount} fields still say TODO. They are marked with a dashed yellow border.</p>}
+    <div slot="aside" class="crossing">
+      <svg viewBox={`0 0 ${VB.w} ${VB.h}`} role="img" aria-label="The three of us on a crossing like the ones at this junction">
+        <defs><clipPath id="x-clip"><rect width={VB.w} height={VB.h} rx="8" /></clipPath></defs>
+        <rect width={VB.w} height={VB.h} rx="8" class="x-road" />
+        <g clip-path="url(#x-clip)"><g transform={`rotate(${TURN} ${VB.w / 2} ${VB.h / 2})`}>
+          <line x1="-40" x2={VB.w + 40} y1={BAR_Y + BAR_H + 22} y2={BAR_Y + BAR_H + 22} class="x-stop" />
+          <line x1="-40" x2={VB.w + 40} y1={BAR_Y - 18} y2={BAR_Y - 18} class="x-lane" />
+          {bars.map((b) => <rect x={b.x} y={BAR_Y} width={BAR_W} height={BAR_H} rx="2" class={b.zebra ? "x-bar z" : "x-bar p"} />)}
+        </g></g>
+        {badges.map((b) => <ellipse cx={b.x + 4} cy={b.y + 34} rx="30" ry="7" class="x-shadow" />)}
+      </svg>
+      {badges.map((b) => (
+        <a class="x-badge" href={`#m-${b.n}`} data-m={b.n} aria-label={b.name} style={`left:${b.left.toFixed(2)}%;top:${b.top.toFixed(2)}%`}>{b.initials}</a>
+      ))}
+    </div>
+  </PageHead>
+
+  <section class="wrap team-body">
+    <ul class="members" role="list">
+      {team.members.map((m, i) => (
+        <li class="member plate" id={`m-${i + 1}`} data-m={i + 1} data-reveal style={`--i:${i}`}>
+          <div class="m-top">
+            <span class="m-badge" aria-hidden="true">{initials(m.name)}</span>
+            <div>
+              <h2 class="m-name">{m.name}</h2>
+              <p class:list={["m-role", { todo: /\bTODO\b/.test(m.role) }]}>{m.role}</p>
+            </div>
+            <span class="m-no" aria-hidden="true">{String(i + 1).padStart(2, "0")}</span>
+          </div>
+
+          <h3 class="m-h">What they did</h3>
+          <ul class="m-did">
+            {m.did.map((d) => <li class:list={{ todo: /\bTODO\b/.test(d) }}>{d}</li>)}
+          </ul>
+
+          {links(m).length > 0 && <h3 class="m-h">Links</h3>}
+          {links(m).length > 0 && <ul class="m-links" role="list">
+            {links(m).map((l) => (
+              <li>
+                {isTodo(l.v) ? (
+                  <span class="chip todo" title="Fill in team.json">{l.k}: TODO</span>
+                ) : (
+                  <a class="chip on" href={l.v} rel="noopener" target="_blank">{l.k}</a>
+                )}
+              </li>
+            ))}
+          </ul>}
+
+          {m.projects.length > 0 && <h3 class="m-h">Previous projects</h3>}
+          {m.projects.length > 0 && <ul class="m-proj" role="list">
+            {m.projects.map((p) => (
+              <li>
+                {isTodo(p.url) || isTodo(p.name) ? (
+                  <span class="todo-inline">{isTodo(p.name) ? "TODO: project name" : p.name}{isTodo(p.url) ? ", link TODO" : ""}</span>
+                ) : (
+                  <a href={p.url} rel="noopener" target="_blank">{p.name}</a>
+                )}
+              </li>
+            ))}
+          </ul>}
+        </li>
+      ))}
+    </ul>
+  </section>
+</Base>
+
+<style>
+  .todo-note { font-size: .8125rem; color: var(--zebra); margin: 14px 0 0; }
+
+  /* the crossing in the head; the badges are links laid over the drawing */
+  .crossing { position: relative; container-type: inline-size; max-width: 520px; margin-inline: auto; }
+  .crossing svg { width: 100%; height: auto; }
+  .x-road { fill: var(--asphalt-3); }
+  .x-bar.z { fill: var(--zebra); }
+  .x-bar.p { fill: var(--paint); }
+  .x-bar.p { opacity: .92; }
+  .x-stop { stroke: var(--paint); stroke-width: 6; opacity: .75; }
+  .x-lane { stroke: rgba(241, 238, 230, .3); stroke-width: 3; stroke-dasharray: 24 24; }
+  .x-shadow { fill: rgba(0, 0, 0, .45); filter: blur(3px); }
+  .x-badge {
+    position: absolute; width: calc(56 / 480 * 100%); aspect-ratio: 1; transform: translate(-50%, -50%);
+    display: grid; place-items: center;
+    background: var(--asphalt-2); color: var(--paint); text-decoration: none;
+    border: 2px solid var(--paint); border-radius: var(--r-2);
+    font: 700 calc(22 / 480 * 100cqw)/1 var(--font-display); font-synthesis: none; letter-spacing: .02em;
+    box-shadow: inset 0 0 0 3px var(--asphalt-2), inset 0 0 0 4px rgba(241, 238, 230, .18), 0 10px 18px -8px rgba(0, 0, 0, .8);
+    transition: background var(--t-2), color var(--t-2), border-color var(--t-2), box-shadow var(--t-2), transform var(--t-2) var(--ease-out);
+  }
+  .x-badge:hover, .x-badge:focus-visible, .x-badge.lit {
+    background: var(--zebra); color: var(--ink); border-color: var(--ink);
+    box-shadow: inset 0 0 0 3px var(--zebra), inset 0 0 0 4px var(--ink), var(--glow-zebra);
+  }
+  .x-badge:focus-visible { outline-color: var(--paint); }
+
+  /* member cards */
+  .team-body { padding-block: clamp(32px, 4vw, 56px) 0; }
+  .members { list-style: none; padding: 0; margin: 0; display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr)); }
+  .member { position: relative; overflow: hidden; display: block; padding: 24px 22px 24px; scroll-margin-top: calc(var(--header-h) + 24px); }
+  .member::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 5px; background: var(--stripes); }
+  .member.lit { box-shadow: var(--sign-edge-hot), var(--shadow-2); }
+  .member:target { box-shadow: var(--sign-edge-hot), var(--shadow-2); }
+  .m-top { display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: center; margin: 6px 0 18px; padding-right: 76px; }
+  .m-badge {
+    width: 56px; height: 56px; display: grid; place-items: center; border: 2px solid var(--paint); border-radius: var(--r-2);
+    font: 700 1.5rem/1 var(--font-display); font-synthesis: none; letter-spacing: .02em;
+    box-shadow: inset 0 0 0 3px var(--asphalt-2), inset 0 0 0 4px rgba(241, 238, 230, .18);
+    transition: background var(--t-2), color var(--t-2), border-color var(--t-2);
+  }
+  .member.lit .m-badge { background: var(--zebra); color: var(--ink); border-color: var(--ink); box-shadow: inset 0 0 0 3px var(--zebra), inset 0 0 0 4px var(--ink); }
+  .m-name { margin: 0; font: 700 1.75rem/1.05 var(--font-display); font-synthesis: none; }
+  .m-role { margin: 6px 0 0; color: var(--paint-2); font-size: .9375rem; line-height: 1.45; }
+  /* the member number as a watermark */
+  .m-no {
+    position: absolute; top: 10px; right: 16px; pointer-events: none;
+    font: 700 4.5rem/1 var(--font-display); font-synthesis: none; font-variant-numeric: tabular-nums lining-nums;
+    color: rgba(241, 238, 230, .06);
+  }
+  .m-h { font-family: var(--font-mono); font-size: .75rem; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 20px 0 8px; }
+  .m-did { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; font-size: .9375rem; line-height: 1.55; color: var(--paint-2); }
+  .m-did li { position: relative; padding-left: 20px; }
+  .m-did li::before { content: ""; position: absolute; left: 1px; top: .5em; width: 7px; height: 7px; border-radius: 1px; background: var(--zebra); }
+  .m-links { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+  .m-links a.chip { min-height: 32px; padding: 7px 10px; text-decoration: none; transition: border-color var(--t-1), color var(--t-1); }
+  .m-links a.chip:hover { border-color: var(--zebra); color: var(--zebra); }
+  .m-proj { list-style: none; padding: 0; margin: 0; display: grid; gap: 4px; font-size: .9375rem; }
+  .todo, .todo-inline {
+    outline: 1px dashed var(--zebra); outline-offset: 3px; color: var(--zebra); font-family: var(--font-mono); font-size: .8125rem;
+  }
+  .m-did li.todo { outline-offset: 2px; }
+</style>
+
+<script>
+  // a member card and that member's badge on the crossing light together
+  const pairs = [...document.querySelectorAll<HTMLElement>(".member[data-m]")].map((card) => ({
+    card,
+    badge: document.querySelector<HTMLElement>(`.x-badge[data-m="${card.dataset.m}"]`),
+  }));
+  for (const { card, badge } of pairs) {
+    if (!badge) continue;
+    const on = () => { card.classList.add("lit"); badge.classList.add("lit"); };
+    const off = () => { card.classList.remove("lit"); badge.classList.remove("lit"); };
+    for (const el of [card, badge]) {
+      el.addEventListener("mouseenter", on);
+      el.addEventListener("mouseleave", off);
+      el.addEventListener("focusin", on);
+      el.addEventListener("focusout", off);
+    }
+  }
+</script>

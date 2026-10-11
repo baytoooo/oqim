@@ -1,0 +1,117 @@
+---
+/**
+ * The numbered sections of a long page as stops on a lane, right under the page head. From 900 px it
+ * stays under the site header while the page scrolls and lights the section being read; on phones it is
+ * a row that scrolls sideways. Each item links to an id on the page (a section or a heading).
+ */
+interface Item {
+  id: string;
+  n: string;
+  t: string;
+}
+interface Props {
+  items: Item[];
+}
+const { items } = Astro.props;
+---
+<nav class="sx" aria-label="On this page">
+  <div class="wrap">
+    <ol class="sx-list" role="list">
+      {items.map((it) => (
+        <li>
+          <a href={`#${it.id}`} data-sx={it.id}>
+            <span class="sx-n" aria-hidden="true">{it.n}</span>
+            <span class="sx-t">{it.t}</span>
+          </a>
+        </li>
+      ))}
+    </ol>
+  </div>
+</nav>
+
+<style>
+  .sx { position: relative; z-index: var(--z-sticky); }
+  .sx-list {
+    list-style: none; margin: 0 -6px; padding: 12px 6px; display: flex; gap: 6px;
+    overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+  }
+  .sx-list::-webkit-scrollbar { display: none; }
+  .sx-list li { display: flex; align-items: center; flex: none; scroll-snap-align: start; }
+  .sx-list a {
+    display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 4px 12px 4px 4px;
+    border: 1px solid var(--line); border-radius: var(--r-2); background: var(--asphalt-2);
+    color: var(--paint-2); text-decoration: none; white-space: nowrap;
+    font: 600 .875rem/1.2 var(--font-text);
+    transition: color var(--t-1), border-color var(--t-1), background var(--t-1);
+  }
+  .sx-n {
+    display: grid; place-items: center; min-width: 30px; height: 30px; padding: 0 4px;
+    border: 2px solid var(--line-2); border-radius: var(--r-1); background: var(--asphalt-0);
+    font: 600 .75rem/1 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--paint);
+    transition: background var(--t-2), border-color var(--t-2), color var(--t-2);
+  }
+  .sx-list a:hover { color: var(--paint); border-color: var(--line-2); }
+  .sx-list a:hover .sx-n { border-color: var(--zebra); }
+  .sx-list a[aria-current="true"] { color: var(--paint); }
+  .sx-list a[aria-current="true"] .sx-n { background: var(--zebra); border-color: var(--zebra); color: var(--ink); }
+
+  /* from 900 px: one row of stops joined by a dashed lane, held under the site header */
+  @media (min-width: 900px) {
+    .sx {
+      position: sticky; top: var(--header-h);
+      background: rgba(21, 22, 24, .86);
+      -webkit-backdrop-filter: blur(12px) saturate(140%); backdrop-filter: blur(12px) saturate(140%);
+      border-bottom: 1px solid var(--line-soft);
+    }
+    .sx-list { gap: 0; margin: 0; padding: 9px 0; overflow: visible; }
+    .sx-list li { flex: 1 1 auto; }
+    .sx-list li:last-child { flex: none; }
+    .sx-list li:not(:last-child)::after {
+      content: ""; flex: 1; min-width: 10px; height: 2px; margin: 0 8px;
+      background: repeating-linear-gradient(90deg, rgba(241, 238, 230, .2) 0 8px, transparent 8px 14px);
+    }
+    .sx-list a { min-height: 34px; padding: 2px 4px 2px 2px; border: 0; background: none; font-size: .8125rem; }
+    .sx-n { min-width: 28px; height: 28px; }
+    /* anchor jumps stop below the header and this bar (html's scroll-padding adds --subnav-h) */
+    :global(:root:has(.sx)) { --subnav-h: 56px; }
+  }
+  @media (min-width: 900px) and (max-width: 1099px) {
+    .sx-t { font-size: .75rem; }
+    .sx-list li:not(:last-child)::after { margin: 0 4px; }
+  }
+</style>
+
+<script>
+  // light the stop of the section being read: the last target whose top has passed a line 40% of the
+  // way down the screen, together with any target starting level with it (two columns side by side)
+  const links = [...document.querySelectorAll<HTMLAnchorElement>(".sx a[data-sx]")];
+  // a target is measured at the top of its section head, so two heads side by side start level
+  const targets = links.map((a) => {
+    const t = document.getElementById(a.dataset.sx!);
+    return t ? (t.closest(".sec-head") ?? t.querySelector(".sec-head") ?? t) : null;
+  });
+  let queued = false;
+  const update = () => {
+    queued = false;
+    const line = window.innerHeight * 0.4;
+    const tops = targets.map((t) => (t ? t.getBoundingClientRect().top : Infinity));
+    let best = -Infinity;
+    for (const top of tops) if (top <= line && top > best) best = top;
+    links.forEach((a, i) => {
+      const on = best > -Infinity && tops[i] <= line && tops[i] >= best - 24;
+      if (on) a.setAttribute("aria-current", "true");
+      else a.removeAttribute("aria-current");
+    });
+  };
+  const queue = () => {
+    if (queued) return;
+    queued = true;
+    requestAnimationFrame(update);
+  };
+  if (links.length) {
+    addEventListener("scroll", queue, { passive: true });
+    addEventListener("resize", queue, { passive: true });
+    update();
+  }
+</script>

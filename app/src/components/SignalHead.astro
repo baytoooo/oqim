@@ -1,0 +1,21 @@
+---
+/**
+ * A small three-lamp signal head. Decorative (aria-hidden); pages that show a state put the state in text next to it.
+ * Light lamps with `phase`, or from page CSS on a parent: `.is-red`, `.is-amber`, `.is-red-amber`, `.is-green`
+ * light the matching `.sh-red`, `.sh-amber`, `.sh-green` inside. `run` plays the start sequence (home hero only).
+ */
+interface Props {
+  phase?: "off" | "red" | "red-amber" | "amber" | "green";
+  orient?: "h" | "v";
+  /** lamp diameter in px */
+  size?: number;
+  run?: boolean;
+  class?: string;
+}
+const { phase = "off", orient = "h", size = 12, run = false, class: cls } = Astro.props;
+---
+<span
+  class:list={["sighead", `sh-${orient}`, phase !== "off" && `is-${phase}`, { run }, cls]}
+  style={`--lamp:${size}px`}
+  aria-hidden="true"
+><i class="sh-red"></i><i class="sh-amber"></i><i class="sh-green"></i></span>

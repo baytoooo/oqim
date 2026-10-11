@@ -1,0 +1,157 @@
+# In-browser pipeline
+
+The live demo runs the PariVision pipeline in the visitor's browser: no server,
+nothing uploaded. It is a port of `src/parivision/` (Python) to TypeScript, and
+every stage is pinned to the Python code by parity tests on fixtures that the
+Python code writes (`tools/export_parity_fixtures.py`).
+
+What differs from the submission, on purpose:
+
+| stage | submission (Python) | browser |
+|---|---|---|
+| frames | every 3rd frame (10 fps), 4K decoded to 1920 px | 5 fps, drawn from a `<video>` element |
+| detector | YOLO26m at 1280 px (PyTorch) | the ONNX export in `public/pipeline/model.onnx` (see `scene.json` `detector`) on WebGPU or WASM |
+| registration | SIFT + MAGSAC homography | scale + shift search on edge maps against the two references, refined to an affine and then a full homography (Gauss-Newton) |
+| everything after | tracker, trajectories, signal, rules, risk | the same algorithms and constants |
+
+## Files
+
+```
+types.ts         shared types (below)
+scene.ts         loads public/pipeline/scene.json + scene.bin.gz; point lookups in the reference view
+geometry.ts      homographies, signed side of a line, rounding like NumPy
+segments.ts      runs / union / finalize (segments.py)
+tracker.ts       ByteTrack as in Ultralytics 8.4 (Kalman filter, two-stage matching), one per object group
+trajectories.ts  build(): foot points, smoothing, velocities (trajectories.py)
+signal.ts        lamp patches, lamp scores, phase per frame, fill_phases (signal.py)
+align.ts         the upload's first frame -> homography into the reference view
+rules.ts         Context and one function per class, detectFromContext (rules.py, events.py)
+risk.ts          Part B's Anticipator.observe path (risk.py)
+detector.ts      letterbox, ONNX session, output parsing; works with onnxruntime-web and -node
+analyse.ts       Analyser, glue with no DOM: frames in, PipelineResult (events, signal, risk curve,
+                 counts, tracker boxes per frame, the zone of each piece of evidence) out;
+                 pipeline.py analyse() + demo/worker.py, zones as tools/make_site_data.py
+messages.ts      the messages between the page and the worker
+worker.ts        Web Worker: owns the ONNX session and the running job's Analyser
+```
+
+The UI side lives in `src/scripts/local_api.ts` (the demo page's `Api` for this
+pipeline: frame extraction from a `<video>`, talking to the worker) and the
+overlay drawing in `src/scripts/player.ts`.
+
+## In the page
+
+A job, message by message (types in `messages.ts`):
+
+1. First job only: the page decodes the two reference PNGs to grey bytes and
+   starts the worker with `init`. The worker downloads `scene.json`,
+   `scene.bin.gz` and `model.onnx` (posting `loading` progress), picks
+   onnxruntime-web's WebGPU build when `navigator.gpu` gives an adapter and its
+   WASM build otherwise, creates the session (WebGPU, falling back to WASM) and
+   posts `ready` with the backend and the detector input size.
+2. The page opens the clip in a hidden `<video>` and times a few seeks. If the
+   browser shows no frame of it (the camera's 10-bit 4:2:2 files in most
+   browsers on Windows and Linux), seeks slowly because it decodes in software
+   (the same files in Chrome on a Mac), fails a seek, or the page has
+   `?transcode=1`, the page first converts the part it analyses (the first
+   600 s, or 30 s for a quick run on the CPU, see step 3) with ffmpeg.wasm
+   (`src/scripts/transcode.ts`) to 8-bit H.264, 1920 px wide, and opens that. If
+   the conversion fails on a clip the browser decodes, only slowly, the page
+   reads the original after all. It draws the first frame grey
+   at 480 x 270 and posts `align`. WebKit draws black at t = 0 for a clip whose
+   first frame comes later (an empty edit at the start), so a black frame is
+   skipped: the page steps 0.2 s at a time, up to 1 s, to the first frame that
+   is not black. The worker runs `alignToReference`, builds the
+   lamp patches and an Analyser, and posts `aligned` with H and the lamp crop.
+   As in `pipeline.py`, the view is registered again on keyframes (every 2 s for
+   the first 30 s, then every 10 s): the worker takes the detector frame in grey
+   at half size, and when it registers, the lamp patches move with it. The
+   camera can still be settling when a recording starts (C3896 moves 9 px in its
+   first 40 s), and with the first frame's patches alone the lamps read as off
+   within seconds. The lamp crop has a 24 px margin, so the patches stay inside
+   it. At `finish` the keyframes' median is registered once more and, if that
+   works, the rules use it.
+3. For t = k / 5 s from that frame on, while t < min(duration, 600 s) (30 s
+   when the model runs on WebAssembly and the visitor keeps the quick run the
+   page offers there): the page seeks, draws the
+   frame at 960 px wide and the lamp crop at work scale, and posts `frame` (pixel
+   buffers transferred, at most two in flight, so the next seek overlaps the
+   current detection). The worker detects, reads the lamps, calls
+   `Analyser.push` and posts `frame-done`.
+4. `finish`: the worker calls `Analyser.finish` and posts `result`; the page
+   turns it into a ClipResult whose video is the clip's object URL. `cancel`
+   drops the job, and the worker skips its frames still in the queue.
+
+The live page (`src/scripts/live.ts`, through `LocalApi.live`) runs the same
+job on frames of a camera or a shared tab or window. It aligns the first frame,
+then posts `frame` messages with `live: true`, one at a time (the next only
+after the reply to the last, and at most 5 per second), with times counted from
+the start of the run. After each of them the worker also posts `live`: the
+tracker boxes of that frame (`Analyser.lastFrame`) and the risk score after it
+(`Analyser.lastRisk`). At Stop the page sends `finish` when the first frame
+matched our junction, and `cancel` otherwise.
+
+A view that never matches our junction (neither the first frame nor the keyframes' median at
+`finish` registers) gets a generic result (`generic.ts`, browser only). The zebras, the stop line,
+the lamps and our carriageways are drawn for our junction, so those rules stay off. Two rules need
+no map of the place: wrong-way driving against the direction the traffic takes in each 40 px cell
+of the frame, learned from the clip itself (a cell counts when at least 30 samples of 4 other
+vehicles agree on one direction), and `collisions`, with metres per pixel from a plane fitted to
+the size of the clip's vehicle boxes (`tools/crash_check.py` `vehicle_scale`). The risk model is
+replayed over the stored detections the way `crash_check.replay` runs it: the whole frame is road,
+there is no median, metres come from the vehicle sizes. Checked in Python on our four clips at 5
+frames per second as if the junction were unknown: 948 of 1072 real vehicle tracks run backwards
+were found as wrong-way, and nothing fired in the 18 minutes of normal traffic.
+
+onnxruntime-web runs single-threaded unless the page is cross-origin isolated.
+Its `.wasm` files are emitted by Vite (`?url` imports in `worker.ts`), and the
+worker is built as an ES module (`vite.worker.format` in `astro.config.mjs`).
+
+## Rules for this folder
+
+* TypeScript that Node runs as is (`node --test "tests/*.test.ts"`): only erasable syntax
+  (no `enum`, no constructor parameter properties, no `namespace`), relative
+  imports with the `.ts` extension, `import type` for types.
+* No DOM in anything but `worker.ts`; the Node tests import the rest.
+* Constants come from `scene.json`, never retyped. If a constant is missing,
+  add it to `tools/export_browser_assets.py` and re-export.
+* Match NumPy where it matters: `np.round` rounds half to even
+  (`geometry.roundHalfEven`), `scipy.ndimage.uniform_filter1d` with mode
+  "nearest" repeats the edge value, `np.percentile` interpolates linearly, `np.median` of an even count
+  averages the middle two.
+
+## Coordinates
+
+* **work**: the frame scaled to 1920 px wide (1080 high for 16:9). Detector
+  boxes, tracker boxes and `Trajectory.box` are in work pixels.
+* **reference**: the 1920x1080 reference view. `Trajectory.foot`, all scene
+  rasters, polygons and rule thresholds are in reference pixels.
+* `H` (3x3, row-major) maps work pixels to reference pixels.
+* The detector input is `scene.json` `detector.input` = [h, w] (544 x 960):
+  the frame is drawn at 960 x 540 and letterboxed with 2 px of grey (114) at
+  the top and bottom, as Ultralytics' `LetterBox(auto=False, center=True)`.
+  Its boxes (input pixels) minus the padding, times 2, are work pixels.
+
+## Tests
+
+`site/tests/*.test.ts`, run from `site/` with `node --test "tests/*.test.ts"`. Fixtures are in
+`site/tests/fixtures/<clip>/` (C3905 and C3902), made by
+`python tools/export_parity_fixtures.py --clip <clip>`; see its docstring for
+what each file holds. The C3905 fixtures and the two reference frames are
+committed gzipped (`tests/fixture.ts` reads either form). The C3902 tests skip
+until `python tools/export_parity_fixtures.py --clip C3902` writes theirs; see
+the Tests section of the top-level README. Each test feeds a module the Python input of that stage
+and compares with the Python output of that stage:
+
+| test | input | compared with | tolerance |
+|---|---|---|---|
+| scene | scene_samples.json points | the Python values | exact (distances 1/16 px) |
+| segments | hand-written cases from tests/test_core.py | | exact |
+| tracker | detections.json | tracks.json | >= 97% of rows matched by box, ids consistent |
+| trajectories | tracks.json | trajectories.json | 1e-3 px |
+| signal | lamp_*.rgb, signal.json raw | lamps.json scores, signal.json phases | 0.5, exact |
+| align | frame0.gray + refs | alignment.json H | reference points within 4 px |
+| rules | trajectories.json + signal.json phases | rules.json events and evidence | 0.01 s |
+| risk | detections.json | risk.json | 0.02 per frame |
+| analyse | detections.json + signal.json lamp scores | rules.json events and evidence, risk.json | 0.015 s, actor ids up to a renaming; risk 0.02 on 99% of frames |
+| detector | det_frame.rgb | det_expected.json | boxes within 1 px, same classes |

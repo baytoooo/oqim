@@ -1,0 +1,18 @@
+---
+interface Props {
+  num?: string;
+  title: string;
+  id?: string;
+}
+const { num, title, id } = Astro.props;
+const hasBody = Astro.slots.has("default");
+---
+<div class:list={["sec-head", { "has-body": hasBody }]} data-reveal>
+  <div class="sh-grid">
+    <div class="sh-title">
+      {num && <span class="num" aria-hidden="true">{num}</span>}
+      <h2 id={id}>{title}</h2>
+    </div>
+    {hasBody && <div class="sh-body"><slot /></div>}
+  </div>
+</div>

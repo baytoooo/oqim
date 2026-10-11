@@ -1,0 +1,50 @@
+---
+import { ELIMINATION_URL, EVENT_NAME, PRODUCT, REPO_URL, TEAM_NAME, WEIGHTS_URL } from "../config";
+import { isTodo } from "../lib/format";
+import { NAV_LINKS } from "./nav-links";
+
+const links = [
+  { label: "Repository", href: REPO_URL },
+  { label: "Elimination-stage system", href: ELIMINATION_URL },
+  { label: "Its repository and weights", href: WEIGHTS_URL },
+];
+---
+<footer class="site-footer">
+  <div class="zebra-rule thin" aria-hidden="true"></div>
+  <div class="wrap foot-grid">
+    <div class="foot-team">
+      <p class="foot-brand">
+        <svg viewBox="0 0 30 20" aria-hidden="true">
+          <rect x="0" y="0" width="4" height="20" fill="#f3c316" />
+          <rect x="6.5" y="0" width="4" height="20" fill="#f1eee6" />
+          <rect x="13" y="0" width="4" height="20" fill="#f3c316" />
+          <rect x="19.5" y="0" width="4" height="20" fill="#f1eee6" />
+          <rect x="26" y="0" width="4" height="20" fill="#f3c316" />
+        </svg>
+        <span>{PRODUCT} by {TEAM_NAME}</span>
+      </p>
+      <p class="foot-meta"><span>{EVENT_NAME}.</span> <span>Webster University in Tashkent.</span></p>
+    </div>
+    <nav class="foot-col" aria-labelledby="foot-pages-k">
+      <p class="foot-k" id="foot-pages-k">Pages</p>
+      <ul class="foot-pages" role="list">
+        {NAV_LINKS.map((l) => (
+          <li><a href={l.href}>{l.label}</a></li>
+        ))}
+      </ul>
+    </nav>
+    <nav class="foot-col" aria-labelledby="foot-files-k">
+      <p class="foot-k" id="foot-files-k">Project files</p>
+      <ul class="foot-files" role="list">
+        {links.map((l) => (
+          <li>
+            {isTodo(l.href) ? <span class="pending">{l.label}</span> : <a href={l.href} class="mono">{l.label}</a>}
+          </li>
+        ))}
+      </ul>
+    </nav>
+  </div>
+  <div class="wrap foot-bottom">
+    <a class="foot-top" href="#main">Back to top</a>
+  </div>
+</footer>

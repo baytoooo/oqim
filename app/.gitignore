@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.astro/
+.vercel/
+.DS_Store
+# copied from node_modules by scripts/copy-ffmpeg.ts
+public/ffmpeg/

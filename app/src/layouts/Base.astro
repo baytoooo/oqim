@@ -1,0 +1,58 @@
+---
+import "@fontsource-variable/overpass";
+import "@fontsource/overpass-mono/400.css";
+import "@fontsource/overpass-mono/600.css";
+import "@fontsource/barlow-condensed/600.css";
+import "@fontsource/barlow-condensed/700.css";
+import bc600 from "@fontsource/barlow-condensed/files/barlow-condensed-latin-600-normal.woff2?url";
+import bc700 from "@fontsource/barlow-condensed/files/barlow-condensed-latin-700-normal.woff2?url";
+import "../styles/global.css";
+import SiteHeader from "../components/SiteHeader.astro";
+import SiteFooter from "../components/SiteFooter.astro";
+import { PRODUCT, TEAM_NAME } from "../config";
+
+interface Props {
+  title: string;
+  description: string;
+  active?: string;
+  /** false leaves out og:url, for a page with no address of its own (the 404 page) */
+  ogUrl?: boolean;
+}
+const { title, description, active = "", ogUrl = true } = Astro.props;
+const fullTitle = title === PRODUCT ? `${PRODUCT}: a traffic signal audit from one video` : `${title} | ${PRODUCT}`;
+// link previews (Telegram, Slack) need absolute URLs; `site` is set in astro.config.mjs.
+// The build sees "/results/"; the site links "/results", so og:url drops the trailing slash.
+const pageUrl = ogUrl ? new URL(Astro.url.pathname.replace(/(.)\/$/, "$1"), Astro.site).href : undefined;
+const ogImage = new URL("/media/C3896_poster.jpg", Astro.site);
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script is:inline>(function(){var d=document.documentElement;if(matchMedia('(prefers-reduced-motion: no-preference)').matches&&'IntersectionObserver' in window){d.classList.add('rv');setTimeout(function(){if(!window.__rv)d.classList.remove('rv')},3000)}})();</script>
+    <link rel="preload" href={bc700} as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href={bc600} as="font" type="font/woff2" crossorigin />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <meta name="theme-color" content="#0d0e10" />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    {pageUrl && <meta property="og:url" content={pageUrl} />}
+    <meta property="og:image" content={ogImage.href} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <SiteHeader active={active} />
+    <main id="main">
+      <slot />
+    </main>
+    <SiteFooter />
+    <script>
+      import "../scripts/reveal.ts";
+    </script>
+  </body>
+</html>

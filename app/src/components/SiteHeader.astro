@@ -1,0 +1,88 @@
+---
+import { EVENT_NAME } from "../config";
+import { NAV_LINKS } from "./nav-links";
+
+interface Props {
+  active: string;
+}
+const { active } = Astro.props;
+---
+<header class="site-header">
+  <div class="zebra-edge" aria-hidden="true"></div>
+  <div class="wrap bar">
+    <a class="brand" href="/" aria-label="OQIM, home">
+      <svg class="brand-mark" viewBox="0 0 30 20" aria-hidden="true">
+        <rect x="0" y="0" width="4" height="20" fill="#f3c316" />
+        <rect x="6.5" y="0" width="4" height="20" fill="#f1eee6" />
+        <rect x="13" y="0" width="4" height="20" fill="#f3c316" />
+        <rect x="19.5" y="0" width="4" height="20" fill="#f1eee6" />
+        <rect x="26" y="0" width="4" height="20" fill="#f3c316" />
+      </svg>
+      <span>OQIM</span>
+    </a>
+    <button class="menu-btn" type="button" aria-expanded="false" aria-controls="site-nav">
+      <span class="bars" aria-hidden="true"><i></i><i></i><i></i></span>
+      <span class="menu-label">Menu</span>
+    </button>
+    <nav class="nav" id="site-nav" aria-label="Main">
+      {NAV_LINKS.map((l, i) => (
+        <a href={l.href} class={l.cls} style={`--i:${i}`} aria-current={active === l.key ? "page" : undefined}>
+          <span class="nav-i" aria-hidden="true">{String(i + 1).padStart(2, "0")}</span>
+          <span class="nav-l">{l.label}</span>
+        </a>
+      ))}
+      <p class="nav-foot">{EVENT_NAME}</p>
+    </nav>
+  </div>
+</header>
+
+<script>
+  const header = document.querySelector<HTMLElement>(".site-header");
+  const btn = document.querySelector<HTMLButtonElement>(".menu-btn");
+  const nav = document.getElementById("site-nav");
+
+  // a shadow under the bar once the page has scrolled
+  if (header) {
+    let queued = false;
+    const update = () => {
+      queued = false;
+      header.classList.toggle("scrolled", window.scrollY > 8);
+    };
+    window.addEventListener(
+      "scroll",
+      () => {
+        if (!queued) {
+          queued = true;
+          requestAnimationFrame(update);
+        }
+      },
+      { passive: true },
+    );
+    update();
+  }
+
+  // phone menu
+  if (btn && nav) {
+    const label = btn.querySelector(".menu-label");
+    const isOpen = () => btn.getAttribute("aria-expanded") === "true";
+    const set = (open: boolean, returnFocus = false) => {
+      btn.setAttribute("aria-expanded", String(open));
+      nav.classList.toggle("open", open);
+      document.documentElement.classList.toggle("menu-open", open);
+      if (label) label.textContent = open ? "Close" : "Menu";
+      if (open) requestAnimationFrame(() => nav.querySelector<HTMLAnchorElement>("a")?.focus());
+      else if (returnFocus) btn.focus();
+    };
+    btn.addEventListener("click", () => set(!isOpen()));
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && isOpen()) set(false, true);
+    });
+    nav.addEventListener("click", (e) => {
+      if (isOpen() && e.target instanceof Element && e.target.closest("a")) set(false);
+    });
+    // wider than the phone layout, the menu is the plain nav bar
+    matchMedia("(max-width: 940px)").addEventListener("change", (e) => {
+      if (!e.matches && isOpen()) set(false);
+    });
+  }
+</script>

@@ -1,0 +1,29 @@
+// Site-wide settings. Everything a teammate may need to change before the
+// final deploy lives here; nothing else in the code hard-codes these values.
+
+/** Links in the footer. A value of "TODO" renders as a greyed-out label instead of a link. */
+export const REPO_URL = "https://github.com/baytoooo/oqim";
+export const WEIGHTS_URL = "https://github.com/baytoooo/parivision-traffic";
+/** The elimination-stage system this product is built on (declared in the README). */
+export const ELIMINATION_URL = "https://parivision-traffic.vercel.app";
+
+export const TEAM_NAME = "PariVision";
+export const PRODUCT = "OQIM";
+export const EVENT_NAME = "WIUT Hackathon 2026, CV track final";
+
+/** Alarm threshold on the risk score, same as THETA in evaluate.py. */
+export const RISK_THETA = 0.5;
+/** Alarm runs closer than this are merged (MERGE_GAP in evaluate.py). */
+export const RISK_MERGE_GAP = 2.0;
+
+/** The demo analyses this many seconds from the start of a clip, at most (src/scripts/local_api.ts stops reading frames there).
+ * Longer than any clip of this camera we have seen (the samples run 2 to 6 minutes). */
+export const UPLOAD_MAX_SECONDS = 600;
+/** Where the model runs on the CPU (WebAssembly, no WebGPU), the demo offers to analyse only this
+ * many seconds of an upload, and does so unless the visitor unticks the box. */
+export const QUICK_SECONDS = 30;
+/** A live run (src/scripts/live.ts) stops by itself after this many seconds. The rules then take
+ * a few seconds for every 5 minutes of stream. */
+export const LIVE_MAX_SECONDS = 600;
+/** The camera's own files are 10-bit 4:2:2 H.264, which not every browser decodes. The demo converts such a file in the browser (src/scripts/transcode.ts); if that fails, it shows this command for converting it on a computer. */
+export const CONVERT_CMD = `ffmpeg -i in.MP4 -t ${UPLOAD_MAX_SECONDS} -vf scale=1920:-2 -pix_fmt yuv420p -c:v libx264 out.mp4`;

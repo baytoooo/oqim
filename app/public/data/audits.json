@@ -1,0 +1,277 @@
+{
+ "source": "tracks of the elimination pipeline (YOLO26m at 1280 px, 10 frames per second, ByteTrack) and its signal lamp reader, southbound approach of the sample junction",
+ "clips": [
+  {
+   "clip": "C3896",
+   "duration": 340.3,
+   "cycle": 75,
+   "hidden": 35,
+   "Y": 0.5,
+   "approaches": [
+    {
+     "name": "Southbound",
+     "vehicles": 130,
+     "flowPerHour": 1375,
+     "meanWait": 12.7,
+     "arrivalsOnGreen": 0.62,
+     "headway": 0.71,
+     "greenMean": 36,
+     "redRuns": 1,
+     "maxQueue": 18
+    }
+   ],
+   "modes": [
+    {
+     "key": "measured",
+     "label": "Now",
+     "meanDelay": 9.3,
+     "vehHours": 0.333,
+     "leftWaiting": 0,
+     "cycle": 75
+    },
+    {
+     "key": "webster",
+     "label": "Webster plan",
+     "meanDelay": 11.3,
+     "vehHours": 0.404,
+     "leftWaiting": 3,
+     "cycle": 47.7
+    },
+    {
+     "key": "tuned",
+     "label": "Tuned fixed plan",
+     "meanDelay": 9.4,
+     "vehHours": 0.335,
+     "leftWaiting": 0,
+     "cycle": 75
+    },
+    {
+     "key": "actuated",
+     "label": "Actuated",
+     "meanDelay": 22,
+     "vehHours": 0.789,
+     "leftWaiting": 9,
+     "cycle": null
+    },
+    {
+     "key": "predictive",
+     "label": "OQIM predictive",
+     "meanDelay": 9.4,
+     "vehHours": 0.337,
+     "leftWaiting": 2,
+     "cycle": null
+    }
+   ],
+   "check": {
+    "departureError": 0.5,
+    "measuredWait": 12.8,
+    "modelWait": 9.3,
+    "vehicles": 105
+   }
+  },
+  {
+   "clip": "C3897",
+   "duration": 317.8,
+   "cycle": 75.1,
+   "hidden": 35.1,
+   "Y": 0.49,
+   "approaches": [
+    {
+     "name": "Southbound",
+     "vehicles": 127,
+     "flowPerHour": 1439,
+     "meanWait": 10.5,
+     "arrivalsOnGreen": 0.61,
+     "headway": 0.67,
+     "greenMean": 36,
+     "redRuns": 1,
+     "maxQueue": 17
+    }
+   ],
+   "modes": [
+    {
+     "key": "measured",
+     "label": "Now",
+     "meanDelay": 10,
+     "vehHours": 0.349,
+     "leftWaiting": 1,
+     "cycle": 75.1
+    },
+    {
+     "key": "webster",
+     "label": "Webster plan",
+     "meanDelay": 13.5,
+     "vehHours": 0.473,
+     "leftWaiting": 0,
+     "cycle": 43.7
+    },
+    {
+     "key": "tuned",
+     "label": "Tuned fixed plan",
+     "meanDelay": 9.7,
+     "vehHours": 0.34,
+     "leftWaiting": 1,
+     "cycle": 75
+    },
+    {
+     "key": "actuated",
+     "label": "Actuated",
+     "meanDelay": 24.4,
+     "vehHours": 0.853,
+     "leftWaiting": 0,
+     "cycle": null
+    },
+    {
+     "key": "predictive",
+     "label": "OQIM predictive",
+     "meanDelay": 8.3,
+     "vehHours": 0.291,
+     "leftWaiting": 0,
+     "cycle": null
+    }
+   ],
+   "check": {
+    "departureError": 0.09,
+    "measuredWait": 10.4,
+    "modelWait": 10,
+    "vehicles": 106
+   }
+  },
+  {
+   "clip": "C3902",
+   "duration": 317.8,
+   "cycle": 80,
+   "hidden": 40.6,
+   "Y": 0.56,
+   "approaches": [
+    {
+     "name": "Southbound",
+     "vehicles": 170,
+     "flowPerHour": 1926,
+     "meanWait": 11.9,
+     "arrivalsOnGreen": 0.58,
+     "headway": 0.53,
+     "greenMean": 35.3,
+     "redRuns": 1,
+     "maxQueue": 22
+    }
+   ],
+   "modes": [
+    {
+     "key": "measured",
+     "label": "Now",
+     "meanDelay": 13.1,
+     "vehHours": 0.617,
+     "leftWaiting": 0,
+     "cycle": 80
+    },
+    {
+     "key": "webster",
+     "label": "Webster plan",
+     "meanDelay": 16.9,
+     "vehHours": 0.793,
+     "leftWaiting": 22,
+     "cycle": 47.4
+    },
+    {
+     "key": "tuned",
+     "label": "Tuned fixed plan",
+     "meanDelay": 13.5,
+     "vehHours": 0.632,
+     "leftWaiting": 1,
+     "cycle": 80
+    },
+    {
+     "key": "actuated",
+     "label": "Actuated",
+     "meanDelay": 22.5,
+     "vehHours": 1.058,
+     "leftWaiting": 0,
+     "cycle": null
+    },
+    {
+     "key": "predictive",
+     "label": "OQIM predictive",
+     "meanDelay": 13.8,
+     "vehHours": 0.648,
+     "leftWaiting": 0,
+     "cycle": null
+    }
+   ],
+   "check": {
+    "departureError": 0.57,
+    "measuredWait": 12,
+    "modelWait": 13.1,
+    "vehicles": 145
+   }
+  },
+  {
+   "clip": "C3905",
+   "duration": 127.6,
+   "cycle": 80,
+   "hidden": 38,
+   "Y": 0.7,
+   "approaches": [
+    {
+     "name": "Southbound",
+     "vehicles": 59,
+     "flowPerHour": 1664,
+     "meanWait": 6.6,
+     "arrivalsOnGreen": 0.68,
+     "headway": 0.81,
+     "greenMean": 37.9,
+     "redRuns": 0,
+     "maxQueue": 13
+    }
+   ],
+   "modes": [
+    {
+     "key": "measured",
+     "label": "Now",
+     "meanDelay": 11.5,
+     "vehHours": 0.188,
+     "leftWaiting": 0,
+     "cycle": 80
+    },
+    {
+     "key": "webster",
+     "label": "Webster plan",
+     "meanDelay": 14.6,
+     "vehHours": 0.238,
+     "leftWaiting": 0,
+     "cycle": 73.3
+    },
+    {
+     "key": "tuned",
+     "label": "Tuned fixed plan",
+     "meanDelay": 7.7,
+     "vehHours": 0.126,
+     "leftWaiting": 3,
+     "cycle": 90
+    },
+    {
+     "key": "actuated",
+     "label": "Actuated",
+     "meanDelay": 7.5,
+     "vehHours": 0.122,
+     "leftWaiting": 0,
+     "cycle": null
+    },
+    {
+     "key": "predictive",
+     "label": "OQIM predictive",
+     "meanDelay": 7.7,
+     "vehHours": 0.127,
+     "leftWaiting": 4,
+     "cycle": null
+    }
+   ],
+   "check": {
+    "departureError": 5.04,
+    "measuredWait": 6.6,
+    "modelWait": 11.5,
+    "vehicles": 52
+   }
+  }
+ ]
+}

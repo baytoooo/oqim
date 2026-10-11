@@ -1,0 +1,51 @@
+{
+ "team": "PariVision",
+ "university": "Webster University in Tashkent",
+ "members": [
+  {
+   "name": "Amal Karimov",
+   "role": "Captain. Scene layout and the signal and vehicle rules",
+   "did": [
+    "Traced the junction in one reference view: crossings, stop line, carriageways and zones",
+    "Found which signal head is the vehicle one and wrote the phase reader for it",
+    "Wrote and tuned the red-light, stop-line, stopped-vehicle and congestion rules"
+   ],
+   "github": "https://github.com/Shen-de-Dia",
+   "linkedin": "https://www.linkedin.com/in/ka-a-a07690405/",
+   "portfolio": "",
+   "projects": []
+  },
+  {
+   "name": "Komronbek Qodirov",
+   "role": "Pipeline, live demo and website",
+   "did": [
+    "Video decoding, detection, tracking, registration and the time budget",
+    "Part B, the accident risk model",
+    "The in-browser demo (the pipeline ported to TypeScript) and this website",
+    "For the final: the OQIM audit core and app"
+   ],
+   "github": "https://github.com/baytoooo",
+   "linkedin": "https://www.linkedin.com/in/kamron-kadirov-7a8149303/",
+   "portfolio": "https://bayto.uz",
+   "projects": [
+    {
+     "name": "BAYTO STUDIO, design and web studio site",
+     "url": "https://bayto.uz"
+    }
+   ]
+  },
+  {
+   "name": "Aziza Adizova",
+   "role": "Dev set, pedestrian rules and report",
+   "did": [
+    "Built the dev set: wrote the labelling guide, ran the labelling, verifier and adjudicator agents, and checked part of their reasoning by hand",
+    "Wrote and tuned the jaywalking and failure-to-yield rules, and the error analysis behind them",
+    "EDA and the technical report"
+   ],
+   "github": "",
+   "linkedin": "https://www.linkedin.com/in/aziza-adizova-033a712a0/",
+   "portfolio": "",
+   "projects": []
+  }
+ ]
+}

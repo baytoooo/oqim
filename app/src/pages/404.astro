@@ -1,0 +1,31 @@
+---
+import Base from "../layouts/Base.astro";
+import PageHead from "../components/PageHead.astro";
+---
+<Base title="Not found" description="This page does not exist." ogUrl={false}>
+  <PageHead kicker="404" title="Wrong turn" lamp="red">
+    <p class="lede">There is no page here. The rest of the site is one click away.</p>
+    <p class="nf-actions">
+      <a class="btn primary" href="/">Back to the start</a>
+      <a class="btn" href="/results">Results</a>
+      <a class="btn" href="/demo">Demo</a>
+    </p>
+    <div slot="aside" class="nf-sign">
+      <svg viewBox="0 0 220 220" aria-hidden="true">
+        <circle cx="110" cy="110" r="96" class="nf-disc" />
+        <circle cx="110" cy="110" r="98" class="nf-ring" />
+        <rect x="46" y="95" width="128" height="30" rx="3" class="nf-bar" />
+      </svg>
+    </div>
+  </PageHead>
+</Base>
+
+<style>
+  .nf-actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 28px 0 0; }
+  /* a no-entry sign: red disc, white bar, a thin paint ring */
+  .nf-sign { display: grid; place-items: center; padding-block: 8px; }
+  .nf-sign svg { width: 220px; max-width: 46vw; height: auto; overflow: visible; }
+  .nf-ring { fill: none; stroke: var(--paint); stroke-width: 4; }
+  .nf-disc { fill: var(--sig-red); filter: drop-shadow(0 0 12px rgba(255, 91, 76, .75)) drop-shadow(0 0 32px rgba(255, 91, 76, .3)); }
+  .nf-bar { fill: var(--paint); }
+</style>
