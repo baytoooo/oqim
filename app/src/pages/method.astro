@@ -7,6 +7,7 @@ import { ELIMINATION_URL } from "../config";
 import { f, loadAudits, mmss, modeOf, weakCheck } from "../lib/audits";
 
 const { source, clips } = loadAudits();
+const websterWorse = clips.filter((c) => (modeOf(c, "webster")?.meanDelay ?? 0) > (modeOf(c, "measured")?.meanDelay ?? Infinity)).length;
 
 const index = [
   { id: "architecture", n: "01", t: "Architecture" },
@@ -145,19 +146,19 @@ const licences = [
 
   <section class="section wrap" id="check">
     <SecHead num="04" title="The model check">
-      <p>Before the replay may judge a plan, it runs under the measured lights and must give back the crossings on the video. For every vehicle that is not censored, the error is the gap between its departure in the model and its crossing on the video; the table shows the median. It also compares the mean wait in the model with the wait measured on the video.</p>
+      <p>Before the replay may judge a plan, it runs under the measured lights and must give back the crossings on the video. For every vehicle that is not censored, the error is the gap between its departure in the model and its crossing on the video; the table shows the median of that gap over the vehicles checked. It also compares the mean wait in the model with the wait measured on the video.</p>
       <p class="src"><span class="src-k">Source</span> {source}.</p>
     </SecHead>
     {clips.length > 0 && (
-      <div class="table-scroll cards-sm" data-reveal>
+      <div class="table-scroll cards-sm chk" data-reveal>
         <table>
           <thead>
             <tr>
               <th scope="col">Clip</th>
               <th scope="col" class="num">Length</th>
               <th scope="col" class="num">Cycle</th>
-              <th scope="col" class="num">Vehicles checked</th>
-              <th scope="col" class="num">Median departure error</th>
+              <th scope="col" class="num">Checked</th>
+              <th scope="col" class="num">Departure error</th>
               <th scope="col" class="num">Wait, model</th>
               <th scope="col" class="num">Wait, measured</th>
               <th scope="col">Note</th>
@@ -173,7 +174,7 @@ const licences = [
                 <td class="num" data-label="Departure error">{f(c.check.departureError, 2)} s</td>
                 <td class="num" data-label="Wait, model">{f(c.check.modelWait)} s</td>
                 <td class="num" data-label="Wait, measured">{f(c.check.measuredWait)} s</td>
-                <td class="wide-sm" data-label="Note">{weakCheck(c) ? "Under 3 minutes; the replay does not fit, so its plans are not trusted." : ""}</td>
+                <td class="wide-sm" data-label="Note">{weakCheck(c) ? "Under 3 minutes. The replay does not fit, so its plans are not trusted." : ""}</td>
               </tr>
             ))}
           </tbody>
@@ -212,7 +213,7 @@ const licences = [
             </tbody>
           </table>
         </div>
-        <p class="note">Seconds of waiting per vehicle; the lowest on each clip is marked. On these clips Webster's formula did worse than the timing already on the street, which is why every plan is checked on the replay before it is recommended.</p>
+        <p class="note">Seconds of waiting per vehicle; the lowest on each clip is marked. Webster's formula did worse than the timing already on the street on {websterWorse === clips.length ? `all ${clips.length}` : `${websterWorse} of ${clips.length}`} clips, which is why every plan is checked on the replay before it is recommended.</p>
       </>
     )}
   </section>
@@ -306,6 +307,8 @@ const licences = [
   .cyc { color: var(--muted); font-weight: 400; font-size: .8125rem; }
   tr.weak > * { color: var(--paint-2); }
   tr.weak td:last-child { color: var(--sig-amber); }
+  .chk td:last-child { min-width: 15rem; }
+  @media (max-width: 640px) { .chk td:last-child { min-width: 0; } }
   .note { margin: 12px 0 0; max-width: 80ch; font-size: .875rem; color: var(--muted); }
 
   /* failures */
