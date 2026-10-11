@@ -28,12 +28,24 @@ const num = (x: number | undefined | null, d = 1) => (typeof x === "number" ? x.
 const int = (x: number | undefined | null) => (typeof x === "number" ? x.toLocaleString("en-US") : "-");
 const capacity = lots.reduce((s, l) => s + (l.capacity ?? 0), 0);
 
-// the hero frame: one PKLot image with its hand-labelled spaces
-const sample = (parking?.samples ?? []).find((x: any) => x.id === "pucpr_sunny_2012-09-11_1731") ?? parking?.samples?.[0] ?? null;
-const sampleSpaces: { occupied: boolean; poly: number[][] }[] = sample?.spaces ?? [];
+// the hero frame: the tracker's PUCPR camera with every space of the car park it found
+const heroLot = (tracker?.lots ?? []).find((l: any) => l.id === "pucpr") ?? null;
+const heroFrame = heroLot ? heroLot.frames.find((f: any) => f.t >= "07:49") ?? heroLot.frames[0] : null;
+const heroState: string = heroFrame ? heroFrame.whole ?? heroFrame.det : "";
+const inset = (a: number, b: number) => [a + (b - a) * 0.08, b - (b - a) * 0.08];
+const sampleSpaces: { occupied: boolean; found: boolean; poly: number[][] }[] = heroLot
+  ? [
+      ...heroLot.spaces.map((poly: number[][], i: number) => ({ occupied: heroState[i] === "1", found: false, poly })),
+      ...(heroLot.extra ?? []).map(([x1, y1, x2, y2]: number[], j: number) => {
+        const [a, b] = inset(x1, x2), [c, d] = inset(y1, y2);
+        return { occupied: heroState[heroLot.spaces.length + j] === "1", found: true, poly: [[a, c], [b, c], [b, d], [a, d]] };
+      }),
+    ]
+  : [];
+const sample = heroLot && heroFrame ? { src: heroFrame.src, camera: heroLot.name, time: `${heroLot.date} ${heroFrame.t}` } : null;
 const sampleFree = sampleSpaces.filter((x) => !x.occupied).length;
-const sampleW = sample?.w ?? 1280;
-const sampleH = sample?.h ?? 720;
+const sampleW = heroLot?.w ?? 800;
+const sampleH = heroLot?.h ?? 450;
 const polyPts = (poly: number[][]) => poly.map(([x, y]) => `${x},${y}`).join(" ");
 
 const trackerSteps = [
@@ -106,26 +118,26 @@ const signalSteps = [
     <figure class="hero-fig">
       <div class="cam viewfinder hero-cam">
         {sample ? (
-          <img src={sample.src} alt={`A PKLot camera frame of the ${sample.camera.toUpperCase()} car park, with every space outlined: free spaces in green, taken spaces in red.`} width={sampleW} height={sampleH} loading="eager" decoding="async" fetchpriority="high" />
+          <img src={sample.src} alt={`The ${sample.camera} car park camera as the tracker reads it, with every space outlined: free spaces in green, taken spaces in red.`} width={sampleW} height={sampleH} loading="eager" decoding="async" fetchpriority="high" />
         ) : (
           <img src="/media/background_960.jpg" alt="A camera frame." width="960" height="540" loading="eager" decoding="async" />
         )}
         {sampleSpaces.length > 0 && (
           <svg class="spaces" viewBox={`0 0 ${sampleW} ${sampleH}`} aria-hidden="true">
             {sampleSpaces.map((sp, i) => (
-              <polygon class:list={["sp", sp.occupied ? "taken" : "free"]} points={polyPts(sp.poly)} style={`--i:${i}`} />
+              <polygon class:list={["sp", sp.occupied ? "taken" : "free", sp.found && "found"]} points={polyPts(sp.poly)} style={`--i:${i % 120}`} />
             ))}
           </svg>
         )}
         {sample && (
           <div class="cam-hud" aria-hidden="true">
-            <span>{sample.camera.toUpperCase()}</span>
+            <span>{sample.camera}</span>
             <span>{sample.time}</span>
             <span>{sampleFree} free of {sampleSpaces.length}</span>
           </div>
         )}
       </div>
-      <figcaption class="hero-cap">A frame of the PKLot dataset (PUCPR car park, Curitiba) with its hand-labelled spaces: green is free, red is taken. The tracker reads the same frames from the camera, one after another.</figcaption>
+      <figcaption class="hero-cap">The PUCPR car park camera (PKLot dataset, Curitiba) at {heroFrame?.t} as the tracker reads it: the whole car park, green free, red taken. Dashed spaces have no hand label; the camera found them where cars stay.</figcaption>
     </figure>
   </section>
 
@@ -376,6 +388,7 @@ const signalSteps = [
   .sp { stroke-width: 2.5; stroke-linejoin: round; }
   .sp.free { fill: rgba(63, 210, 127, .28); stroke: var(--sig-green); }
   .sp.taken { fill: rgba(255, 91, 76, .22); stroke: var(--sig-red); }
+  .sp.found { stroke-dasharray: 4 3; stroke-width: 1.6; }
   .hero-cap { margin: 10px 0 0; font-size: .875rem; line-height: 1.5; color: var(--muted); max-width: 70ch; }
   @media (prefers-reduced-motion: no-preference) {
     .sp { animation: fade 300ms ease-out backwards; animation-delay: calc(400ms + var(--i) * 8ms); }
