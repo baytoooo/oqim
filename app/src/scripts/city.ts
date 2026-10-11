@@ -4,7 +4,7 @@
 // road now and forecast 10 minutes ahead, and drivers placed on car parks by src/oqim/allocate.ts.
 
 import maplibregl, { type GeoJSONSource, type Map as MlMap } from "maplibre-gl";
-import { coordinated, evaluate, holt, nearest, type CarPark, type Driver, type Graph, type Outcome } from "../oqim/allocate";
+import { adjacency, capacity, coordinated, evaluate, holt, nearest, shortest, WINDOW_H, type CarPark, type Driver, type Graph, type Outcome } from "../oqim/allocate";
 
 interface Camera {
   id: string;
@@ -50,7 +50,10 @@ let roads: Roads;
 let parksAll: Park[] = [];
 let dest: [number, number] = [114.2263, 22.3122]; // Kwun Tong MTR station
 let mode: "nearest" | "oqim" = "oqim";
-let last: { nearest: Outcome; oqim: Outcome; parks: CarPark[]; parkMeta: Park[] } | null = null;
+let last: { nearest: Outcome; oqim: Outcome; parks: CarPark[]; parkMeta: Park[]; bg: Float64Array } | null = null;
+/** How many drivers are drawn (the animation adds them one by one, in order of departure). */
+let shown = Infinity;
+let timer = 0;
 
 async function getJson<T>(urls: string[]): Promise<T> {
   let err: unknown;
@@ -157,11 +160,22 @@ function run(): void {
   const N = Number($<HTMLInputElement>("n").value);
   const win = Number($<HTMLSelectElement>("window").value) * 60;
   const rnd = seeded(7);
-  const origins = boundaryOrigins();
+  // starts from which every car park can be reached (one-way carriageways leaving the district are not)
+  const adj = adjacency(roads);
+  const starts = boundaryOrigins();
+  const reach = starts.map((o) => shortest(roads, adj, o, (e) => roads.edges[e][2]).dist);
+  // car parks most starts can reach, then the starts that reach all of them
+  const keep = parks.map((p) => reach.filter((d) => Number.isFinite(d[p.node])).length >= 0.6 * starts.length);
+  for (let i = parks.length - 1; i >= 0; i--) if (!keep[i]) { parks.splice(i, 1); meta.splice(i, 1); }
+  const origins = starts.filter((_, k) => parks.every((p) => Number.isFinite(reach[k][p.node])));
+  if (!origins.length) {
+    $("kpi").innerHTML = `<p class="hint">No start at the edge of the district reaches these car parks; move the destination.</p>`;
+    return;
+  }
   const drivers: Driver[] = Array.from({ length: N }, (_, i) => ({ id: i, origin: origins[Math.floor(rnd() * origins.length)], depart: (i / N) * win }));
   const a = evaluate(roads, bg, parks, drivers, nearest(roads, bg, parks, drivers));
   const b = evaluate(roads, bg, parks, drivers, coordinated(roads, bg, parks, drivers));
-  last = { nearest: a, oqim: b, parks, parkMeta: meta };
+  last = { nearest: a, oqim: b, parks, parkMeta: meta, bg };
   renderKpi(a, b);
   draw();
 }
@@ -179,12 +193,16 @@ function renderKpi(a: Outcome, b: Outcome): void {
 
 function draw(): void {
   if (!last) return;
-  const out = mode === "nearest" ? last.nearest : last.oqim;
-  // roads by load
+  const full = mode === "nearest" ? last.nearest : last.oqim;
+  // the first `shown` drivers (in order of arrival), and the load their routes put on the roads
+  const out = { ...full, assignments: full.assignments.slice(0, Math.min(shown, full.assignments.length)) };
+  const vc = Float64Array.from(last.bg);
+  for (const s of out.assignments) for (const e of s.path) vc[e] += 1 / WINDOW_H / capacity(roads, e);
   (map.getSource("roads") as GeoJSONSource).setData({
     type: "FeatureCollection",
-    features: roads.edges.map(([a, b], e) => ({ type: "Feature", properties: { vc: out.vc[e] }, geometry: { type: "LineString", coordinates: [roads.nodes[a], roads.nodes[b]] } })),
+    features: roads.edges.map(([a, b], e) => ({ type: "Feature", properties: { vc: vc[e] }, geometry: { type: "LineString", coordinates: [roads.nodes[a], roads.nodes[b]] } })),
   });
+  $("status").textContent = `${district.district} · ${mode === "nearest" ? "everyone to the nearest" : "OQIM"} · drivers placed ${out.assignments.length} of ${full.assignments.length} · arrived to a full car park ${out.assignments.filter((s) => s.full).length}`;
   // routes
   const routeFeatures = out.assignments.map((s) => {
     const coords: [number, number][] = [];
@@ -336,6 +354,19 @@ async function main(): Promise<void> {
       draw();
     });
   }
+  $("play").addEventListener("click", () => {
+    clearInterval(timer);
+    shown = 0;
+    draw();
+    timer = window.setInterval(() => {
+      shown++;
+      draw();
+      if (last && shown >= (mode === "nearest" ? last.nearest : last.oqim).assignments.length) {
+        clearInterval(timer);
+        shown = Infinity;
+      }
+    }, 180);
+  });
   $("status").textContent = `${district.district}: ${district.cameras.length} cameras, ${parksAll.length} car parks, ${liveNote}`;
   run();
   if (district.cameras[0]) showCamera(district.cameras[0]);

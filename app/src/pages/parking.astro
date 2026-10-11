@@ -1,0 +1,137 @@
+---
+import Base from "../layouts/Base.astro";
+---
+<Base title="Parking" description="Free and taken parking spaces from an ordinary car-park camera image, counted in your browser with the audit's detector, with its accuracy measured on PKLot." active="parking">
+  <section class="wrap pk-head">
+    <p class="kicker">Parking</p>
+    <h1>Free spaces from a car-park camera</h1>
+    <p class="lede">One still image from a camera that already watches a car park. The detector that runs the signal audit finds the vehicles, and each marked space is free or taken. It runs in this browser: the image is not uploaded anywhere.</p>
+  </section>
+
+  <section class="wrap pk-step">
+    <div class="pick-grid">
+      <div class="panel panel-pad">
+        <p class="k">A frame from the PKLot dataset (two car parks in Curitiba, Brazil; spaces hand labelled)</p>
+        <div class="samples" id="pk-samples"></div>
+      </div>
+      <div class="panel panel-pad">
+        <p class="k">Or your own photo of a car park</p>
+        <label class="btn primary file-btn">
+          <input type="file" id="pk-file" accept="image/*" />
+          Choose a photo
+        </label>
+        <p class="hint">Then mark each space with 4 clicks, one on each corner.</p>
+      </div>
+    </div>
+
+    <div class="pk-grid">
+      <div class="frame-wrap"><canvas id="pk-canvas" width="1280" height="720" aria-label="The car park image with its spaces: green free, red taken"></canvas></div>
+      <div class="side">
+        <div class="panel panel-pad raised edge">
+          <p class="count"><span id="pk-free" class="v">...</span> <span id="pk-free-of" class="l"></span></p>
+          <p class="legend"><i class="sw free"></i> free <i class="sw taken"></i> taken <i class="sw miss"></i> differs from the hand label</p>
+          <p class="hint" id="pk-agree"></p>
+          <label class="hint chk"><input type="checkbox" id="pk-boxes" /> Show the vehicle boxes</label>
+          <div class="tools" id="pk-draw-tools" hidden>
+            <button class="btn ghost small" type="button" id="pk-undo">Undo</button>
+            <button class="btn ghost small" type="button" id="pk-clear">Clear spaces</button>
+          </div>
+        </div>
+        <p class="status mono" id="pk-status" role="status"></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap pk-step">
+    <h2 class="pk-h2">What a car park would publish</h2>
+    <div class="pub-grid">
+      <div class="panel panel-pad">
+        <p class="hint mt0">This count is the data a car park would publish to a routing service: free spaces, per car park, updated every minute. One camera image a minute is enough; no video is stored or sent.</p>
+        <pre class="feed mono" id="pk-feed"></pre>
+        <p class="actions"><a class="btn primary" href="/city">See it feed the routing on the district map</a></p>
+      </div>
+      <div class="panel panel-pad">
+        <p class="k">Car parks near Kennington, London, from OpenStreetMap (ODbL)</p>
+        <div class="scroll-x">
+          <table class="t">
+            <thead><tr><th>Car park</th><th>Spaces</th><th>Where the number comes from</th><th>Lat, lon</th><th>OSM</th></tr></thead>
+            <tbody id="pk-lots"></tbody>
+          </table>
+        </div>
+        <p class="hint">None of these has a name in OpenStreetMap; the names give the nearest street. Data &copy; OpenStreetMap contributors, Open Database Licence.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap pk-step">
+    <h2 class="pk-h2">How accurate it is</h2>
+    <div class="stats">
+      <div class="stat"><div class="v" id="pk-acc">...</div><div class="l">spaces called right</div></div>
+      <div class="stat"><div class="v" id="pk-prec">...</div><div class="l">of spaces called taken, really taken (precision)</div></div>
+      <div class="stat"><div class="v" id="pk-rec">...</div><div class="l">of taken spaces, found (recall)</div></div>
+      <div class="stat"><div class="v" id="pk-cnt">...</div><div class="l">median error in the free count of an image, spaces</div></div>
+    </div>
+    <p class="hint">Measured offline on <span id="pk-n"></span> of PKLot that were not used to choose the rule (samples_src/parking_eval.py), with the same model and rule as this page: <span id="pk-rule"></span>. Ground truth is the dataset's hand labels.</p>
+    <div class="panel scroll-x tbl">
+      <table class="t">
+        <thead><tr><th>Images</th><th class="num">Images</th><th class="num">Spaces</th><th class="num">Accuracy</th><th class="num">Precision</th><th class="num">Recall</th><th class="num">TP / FP / FN / TN</th></tr></thead>
+        <tbody id="pk-table"></tbody>
+      </table>
+    </div>
+    <p class="hint" id="pk-count-err"></p>
+    <p class="hint">"Taken" is the positive class. Most errors are taken spaces it calls free: cars far from the camera, small and partly hidden behind others, are missed. A car park that publishes this count should place its camera so that every space is in clear view, as UFPR04 and UFPR05 are.</p>
+    <p class="hint">Dataset: PKLot, P. R. L. de Almeida, L. S. Oliveira, A. S. Britto Jr., E. J. Silva Jr., A. L. Koerich, "PKLot: A robust dataset for parking lot classification", Expert Systems with Applications 42 (11), 2015. Licence <a href="https://creativecommons.org/licenses/by/4.0/" rel="noopener">CC BY 4.0</a>. Frames and labels taken from the <a href="https://huggingface.co/datasets/Voxel51/PKLot" rel="noopener">Voxel51 copy on Hugging Face</a> of the <a href="https://web.inf.ufpr.br/vri/databases/parking-lot-database/" rel="noopener">official release</a>; the sample frames here are recompressed.</p>
+  </section>
+</Base>
+
+<script>
+  import "../scripts/parking.ts";
+</script>
+
+<style>
+  .pk-head { padding-block: var(--sp-7) var(--sp-4); }
+  .pk-head h1 { font: 700 clamp(2.4rem, 5vw, 3.6rem)/1 var(--font-display); margin: var(--sp-2) 0 var(--sp-3); }
+  .pk-step { padding-block: var(--sp-4) var(--sp-6); }
+  .pk-h2 { font: 700 1.75rem/1.1 var(--font-display); margin: 0 0 var(--sp-4); }
+  .pick-grid { display: grid; gap: var(--sp-4); grid-template-columns: 1fr; margin-bottom: var(--sp-4); }
+  @media (min-width: 860px) { .pick-grid { grid-template-columns: 1.6fr 1fr; } }
+  .k { margin: 0 0 var(--sp-3); color: var(--muted); font-size: .875rem; }
+  .hint { color: var(--muted); font-size: .875rem; margin: var(--sp-3) 0 0; max-width: 80ch; line-height: 1.5; }
+  .hint.mt0 { margin-top: 0; }
+  .file-btn { position: relative; overflow: hidden; cursor: pointer; }
+  .file-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .samples { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+  .samples :global(.sample .mono) { color: var(--zebra); }
+  .samples :global(.sample[aria-pressed="true"]) { border-color: var(--zebra); background: var(--zebra-soft); }
+  .pk-grid { display: grid; gap: var(--sp-4); grid-template-columns: 1fr; }
+  @media (min-width: 960px) { .pk-grid { grid-template-columns: 2.4fr 1fr; } }
+  .frame-wrap { position: relative; background: var(--asphalt-0); border-radius: var(--r-3); overflow: hidden; box-shadow: var(--shadow-3); align-self: start; }
+  .frame-wrap canvas { display: block; width: 100%; height: auto; }
+  .frame-wrap canvas:global(.drawing) { cursor: crosshair; touch-action: manipulation; }
+  .count { margin: 0; display: flex; align-items: baseline; gap: var(--sp-2); flex-wrap: wrap; }
+  .count .v { font: 700 3.4rem/1 var(--font-display); color: var(--sig-green); }
+  .count .l { font: 600 1.4rem/1.1 var(--font-display); color: var(--paint-2); }
+  .legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; color: var(--muted); font-size: .8125rem; margin: var(--sp-3) 0 0; }
+  .sw { display: inline-block; width: 12px; height: 12px; border-radius: 2px; }
+  .sw.free { background: var(--sig-green); }
+  .sw.taken { background: var(--sig-red); }
+  .sw.miss { border: 2px dashed var(--sig-amber); }
+  .chk { display: flex; gap: var(--sp-2); align-items: center; cursor: pointer; }
+  .tools { display: flex; gap: var(--sp-2); flex-wrap: wrap; margin-top: var(--sp-3); }
+  .status { color: var(--paint-2); font-size: .8125rem; min-height: 1.5em; margin-top: var(--sp-3); }
+  .pub-grid { display: grid; gap: var(--sp-4); grid-template-columns: 1fr; }
+  @media (min-width: 960px) { .pub-grid { grid-template-columns: 1fr 1.4fr; } }
+  .feed { background: var(--asphalt-0); border: 1px solid var(--line); border-radius: var(--r-2); padding: var(--sp-3); font-size: .8125rem; color: var(--paint-2); overflow-x: auto; margin: var(--sp-3) 0 0; white-space: pre; }
+  .actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; margin-top: var(--sp-4); }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: var(--sp-3); margin-bottom: var(--sp-3); }
+  .stat { background: var(--asphalt-2); border: 1px solid var(--line); border-radius: var(--r-3); padding: var(--sp-3) var(--sp-4); }
+  .stat .v { font: 700 2rem/1 var(--font-display); }
+  .stat .l { color: var(--muted); font-size: .8125rem; margin-top: 4px; }
+  .tbl { margin-top: var(--sp-4); }
+  .scroll-x { overflow-x: auto; }
+  table.t { width: 100%; border-collapse: collapse; font-size: .875rem; }
+  table.t :global(th), table.t :global(td) { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.t :global(th) { color: var(--muted); font-weight: 600; font-size: .8125rem; background: var(--asphalt-0); }
+  table.t :global(th.num), table.t :global(td.num) { font-family: var(--font-mono); text-align: right; white-space: nowrap; }
+  table.t :global(td.note) { color: var(--muted); font-size: .8125rem; }
+</style>
