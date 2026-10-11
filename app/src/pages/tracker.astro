@@ -1,0 +1,130 @@
+---
+import Base from "../layouts/Base.astro";
+---
+<Base title="Parking tracker" description="Car-park cameras count free spaces, see cars come in and leave, forecast the free spaces for the minute you arrive and tell you which car park to drive to." active="tracker">
+  <section class="wrap head">
+    <p class="kicker">Parking tracker</p>
+    <h1>Know there is a space before you drive there</h1>
+    <p class="lede">Cameras that already watch car parks count the free spaces every few minutes. OQIM sees the cars come in and leave, forecasts the free spaces for the minute you arrive, and tells you which car park to drive to. When many drivers ask at once, it spreads them, so they do not all queue for the same last spaces.</p>
+  </section>
+
+  <section class="wrap">
+    <div class="stage">
+      <div class="cam">
+        <div class="cam-frame">
+          <canvas id="tr-canvas" width="800" height="450" aria-label="The selected car park camera with its spaces: green free, red taken"></canvas>
+          <div class="cam-tag"><span id="tr-cam-name">Loading</span> <span class="mono" id="tr-cam-time"></span></div>
+          <div class="cam-free"><span class="v mono" id="tr-cam-free">..</span><span class="l" id="tr-cam-of"></span></div>
+          <div class="cam-flash" id="tr-flash" aria-live="polite"></div>
+        </div>
+        <div class="controls">
+          <button class="btn" type="button" id="tr-play" aria-pressed="true">Pause</button>
+          <input id="tr-time" type="range" min="0" max="220" step="1" value="0" aria-label="Time of day" />
+          <span class="mono clock" id="tr-clock">06:55</span>
+          <select id="tr-speed" aria-label="Speed"><option value="2.5">slow</option><option value="5" selected>5 min a second</option><option value="12">fast</option></select>
+        </div>
+        <p class="legend"><i class="sw free"></i>free <i class="sw taken"></i>taken <i class="sw in"></i>car came in <i class="sw out"></i>car left</p>
+      </div>
+      <div class="lots" id="tr-lots" role="group" aria-label="Car parks"></div>
+    </div>
+
+    <div class="grid">
+      <div class="panel panel-pad">
+        <p class="k">Free spaces this morning, <span id="tr-chart-name"></span></p>
+        <svg id="tr-chart" viewBox="0 0 640 220" role="img" aria-label="Free spaces over the morning: counted by the camera, hand labels, and the forecast from the current time"></svg>
+        <p class="legend small"><i class="ln det"></i>camera count <i class="ln gt"></i>hand labels <i class="ln fc"></i>forecast from now</p>
+        <p class="k mt">Comings and goings</p>
+        <ol class="events mono" id="tr-events"></ol>
+      </div>
+      <div class="panel panel-pad">
+        <p class="k">Ask now: where should I park?</p>
+        <div id="tr-advice" class="advice"></div>
+        <details class="trip">
+          <summary>Your trip (example times, change them)</summary>
+          <table class="t" id="tr-trip"></table>
+        </details>
+        <p class="k mt">Many drivers asking at the same time</p>
+        <div class="row"><label>Drivers <input id="tr-n" type="range" min="5" max="60" step="5" value="25" /> <span class="mono" id="tr-n-out">25</span></label></div>
+        <div id="tr-spread"></div>
+      </div>
+    </div>
+
+    <div class="panel panel-pad checks">
+      <p class="k">How well it works on these frames</p>
+      <div class="stats" id="tr-stats"></div>
+      <p class="hint" id="tr-notes"></p>
+    </div>
+  </section>
+</Base>
+
+<script>
+  import "../scripts/tracker.ts";
+</script>
+
+<style>
+  .head { padding-block: var(--sp-7) var(--sp-4); }
+  .head h1 { font: 700 clamp(2rem, 4.6vw, 3.2rem)/1.02 var(--font-display); margin: var(--sp-2) 0 var(--sp-3); }
+  .stage { display: grid; gap: var(--sp-4); grid-template-columns: 1fr; }
+  @media (min-width: 1000px) { .stage { grid-template-columns: 2fr 1fr; } }
+  .cam-frame { position: relative; border-radius: var(--r-3); overflow: hidden; box-shadow: var(--shadow-3); background: var(--asphalt-0); aspect-ratio: 16 / 9; }
+  .cam-frame canvas { width: 100%; height: 100%; display: block; }
+  .cam-tag { position: absolute; left: 12px; top: 12px; background: rgba(13, 14, 16, .85); color: var(--paint); padding: 6px 10px; border-radius: var(--r-2); font-size: .875rem; }
+  .cam-free { position: absolute; right: 12px; top: 12px; background: rgba(13, 14, 16, .88); color: var(--paint); padding: 8px 12px; border-radius: var(--r-2); text-align: right; }
+  .cam-free .v { font-size: 2rem; font-weight: 700; display: block; line-height: 1; }
+  .cam-free .l { font-size: .8rem; color: var(--paint-2); }
+  .cam-flash { position: absolute; left: 12px; bottom: 12px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .cam-flash span { background: rgba(13, 14, 16, .88); color: var(--paint); padding: 4px 8px; border-radius: var(--r-2); font-size: .85rem; animation: pop 1.6s ease-out forwards; }
+  @keyframes pop { 0% { opacity: 0; transform: translateY(6px); } 12% { opacity: 1; transform: none; } 80% { opacity: 1; } 100% { opacity: 0; } }
+  .controls { display: flex; gap: var(--sp-3); align-items: center; margin-top: var(--sp-3); }
+  .controls input[type="range"] { flex: 1; min-width: 0; }
+  .clock { font-size: 1.1rem; color: var(--paint); min-width: 3.5em; }
+  select { background: var(--asphalt-3); color: var(--paint); border: 1px solid var(--line-2); border-radius: var(--r-1); padding: 4px 6px; font: inherit; }
+  .legend { color: var(--muted); font-size: .85rem; margin: var(--sp-2) 0 0; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .legend.small { font-size: .8rem; }
+  .sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 4px; vertical-align: middle; }
+  .sw.free { background: #3fd27f; } .sw.taken { background: #ff5b4c; } .sw.in { background: #ffb224; } .sw.out { background: #fff; }
+  .ln { display: inline-block; width: 20px; height: 0; border-top: 3px solid #ffb224; margin-right: 4px; vertical-align: middle; }
+  .ln.gt { border-top: 2px dotted var(--paint-2); } .ln.fc { border-top: 3px dashed #57a6ff; }
+  .grid { display: grid; gap: var(--sp-4); grid-template-columns: 1fr; margin-top: var(--sp-5); }
+  @media (min-width: 960px) { .grid { grid-template-columns: 1.15fr 1fr; } }
+  .k { margin: 0 0 var(--sp-3); color: var(--muted); font-size: .875rem; }
+  .k.mt { margin-top: var(--sp-5); }
+  #tr-chart { width: 100%; height: auto; display: block; }
+  .events { list-style: none; padding: 0; margin: 0; font-size: .85rem; max-height: 210px; overflow: auto; }
+  .row { display: flex; flex-wrap: wrap; gap: var(--sp-3); align-items: center; margin-bottom: var(--sp-3); color: var(--paint-2); font-size: .9rem; }
+  .row label { display: flex; gap: 6px; align-items: center; }
+  .trip summary { cursor: pointer; color: var(--paint-2); font-size: .875rem; margin: var(--sp-3) 0; }
+  .checks { margin-block: var(--sp-5) var(--sp-7); }
+  .hint { color: var(--muted); font-size: .875rem; margin: var(--sp-3) 0 0; max-width: 115ch; }
+</style>
+
+<style is:global>
+  .lots .lot { display: grid; grid-template-columns: 112px 1fr; gap: 10px; width: 100%; text-align: left; background: var(--asphalt-2); border: 1px solid var(--line); border-radius: var(--r-2); padding: 8px; margin-bottom: 10px; color: var(--paint); cursor: pointer; font: inherit; }
+  .lots .lot[aria-pressed="true"] { border-color: var(--zebra); box-shadow: 0 0 0 1px var(--zebra); }
+  .lots .lot img { width: 112px; height: 63px; object-fit: cover; border-radius: 4px; background: var(--asphalt-0); display: block; }
+  .lots .lot .nm { font-weight: 700; font-size: .95rem; }
+  .lots .lot .sub { color: var(--muted); font-size: .78rem; }
+  .lots .lot .fr { font-family: var(--font-mono); font-size: 1.05rem; margin-top: 2px; }
+  .lots .lot .bar { height: 5px; background: var(--asphalt-0); border-radius: 3px; overflow: hidden; margin-top: 4px; }
+  .lots .lot .bar i { display: block; height: 100%; background: #ff5b4c; }
+  .lots .lot .tr { font-size: .8rem; color: var(--paint-2); margin-top: 3px; }
+  .advice .go { font-size: 1.35rem; font-weight: 700; margin: 0 0 6px; }
+  .advice .why { color: var(--paint-2); font-size: .92rem; margin: 0 0 var(--sp-3); }
+  table.t { width: 100%; border-collapse: collapse; font-size: .875rem; }
+  table.t th, table.t td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  table.t th { color: var(--muted); font-weight: 600; font-size: .78rem; background: var(--asphalt-0); }
+  table.t td.num { font-family: var(--font-mono); text-align: right; }
+  table.t input { width: 4.2em; background: var(--asphalt-3); color: var(--paint); border: 1px solid var(--line-2); border-radius: var(--r-1); padding: 2px 4px; font: inherit; }
+  .good { color: var(--sig-green); }
+  .bad { color: var(--sig-red); }
+  .warn { color: #ffb224; }
+  .cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .cmp > div { background: var(--asphalt-2); border: 1px solid var(--line); border-radius: var(--r-2); padding: 10px; }
+  .cmp .h { color: var(--muted); font-size: .8rem; margin-bottom: 4px; }
+  .cmp .big { font-size: 1.5rem; font-weight: 700; font-family: var(--font-mono); }
+  .cmp .s { font-size: .82rem; color: var(--paint-2); }
+  .stats { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+  .stats > div { background: var(--asphalt-2); border: 1px solid var(--line); border-radius: var(--r-2); padding: 10px 12px; }
+  .stats .v { font-size: 1.6rem; font-weight: 700; font-family: var(--font-mono); display: block; }
+  .stats .l { font-size: .82rem; color: var(--muted); }
+</style>
