@@ -132,7 +132,9 @@ const toMin = (t) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
 const frameStep = lots[0].frames.length > 1 ? toMin(lots[0].frames[1].t) - toMin(lots[0].frames[0].t) : null;
 const heroLot = lots[0];
 const heroFrame = heroLot.frames.find((x) => x.t >= "09:00") || heroLot.frames[heroLot.frames.length - 1];
-const heroFree = [...heroFrame.det].filter((c) => c === "0").length;
+const heroWhole = heroFrame.whole || heroFrame.det;
+const heroFree = [...heroWhole].filter((c) => c === "0").length;
+const heroCap = heroWhole.length;
 const longDate = (iso) => new Date(iso + "T12:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 const pTest = parking.eval.test;
 const pFree = parking.eval.free_count_error;
@@ -170,16 +172,16 @@ pres.addSection({ title: "Opening" });
 
   panel(s, 6.85, 1.25, 5.88, 3.43, "Frame panel");
   s.addImage({ path: IMG("tracker_frame.jpg"), x: 6.92, y: 1.32, w: 5.74, h: 3.29, sizing: { type: "cover", w: 5.74, h: 3.29 }, altText: "PKLot camera frame of the PUCPR car park with every space marked free or taken", objectName: "Car park frame" });
-  s.addText(`The ${heroLot.name} car park camera at ${heroFrame.t} on ${longDate(heroLot.date)} (PKLot dataset). Green: free, red: taken, as our detector read the frame.`, { x: 6.85, y: 4.8, w: 5.88, h: 0.55, fontFace: "Calibri", fontSize: 11, color: C.text2, margin: 0, valign: "top", isTextBox: true, objectName: "Frame caption" });
+  s.addText(`The ${heroLot.name} car park camera at ${heroFrame.t} on ${longDate(heroLot.date)} (PKLot dataset). Green: free, red: taken, as our detector read the frame; dashed: spaces the camera found outside the hand labels.`, { x: 6.85, y: 4.8, w: 5.88, h: 0.55, fontFace: "Calibri", fontSize: 11, color: C.text2, margin: 0, valign: "top", isTextBox: true, objectName: "Frame caption" });
 
-  [heroLot.name, heroFrame.t, `${heroFree} free of ${heroLot.capacity}`].forEach((t, i) => {
+  [heroLot.name, heroFrame.t, `${heroFree} free of ${heroCap}`].forEach((t, i) => {
     const widths = [1.2, 1.0, 2.0];
     const x = 6.85 + widths.slice(0, i).reduce((a, b) => a + b + 0.15, 0);
     s.addText(t, { shape: S.ROUNDED_RECTANGLE, x, y: 5.55, w: widths[i], h: 0.42, rectRadius: 0.06, fill: { color: C.background2 }, line: { color: C.accent5, width: 0.75 }, fontFace: "Arial", bold: true, fontSize: 13, color: i === 0 ? C.accent1 : C.text1, align: "center", valign: "middle", margin: 0, objectName: `Frame chip ${i + 1}` });
   });
 
   s.addNotes(
-    `0:10. Good morning. We are team ${team.team} from ${team.university}. Our mode is Startup (say it out loud, the rules ask for it). OQIM is a parking tracker. Cameras over a car park count the free spaces, see cars come in and leave, forecast the free spaces for the minute you arrive, and tell each driver which car park to go to. On the right: a real car park at ${heroFrame.t}, ${heroFree} free spaces of ${heroLot.capacity}.`
+    `0:10. Good morning. We are team ${team.team} from ${team.university}. Our mode is Startup (say it out loud, the rules ask for it). OQIM is a parking tracker. Cameras over a car park count the free spaces, see cars come in and leave, forecast the free spaces for the minute you arrive, and tell each driver which car park to go to. On the right: a real car park at ${heroFrame.t}, ${heroFree} free spaces of ${heroCap}.`
   );
 }
 
@@ -272,7 +274,8 @@ pres.addSection({ title: "Product and demo" });
     [`${tEval.freeErr.median} / ${tEval.freeErr.p90}`, "free count off by, median / 90th percentile, spaces per frame", C.accent1],
   ];
   if (fc) cards.push([`${f1(fc.mae)} vs ${f1(fc.naiveMae)}`, `forecast error ${fc.h} min ahead, in spaces; "same as now" gives ${f1(fc.naiveMae)}`, C.accent4]);
-  cards.push([`${int(tEval.events.in)} in, ${int(tEval.events.out)} out`, "cars seen coming in and leaving", C.accent3]);
+  if (tEval.whole) cards.push([`+${int(tEval.whole.extra)} spaces`, `whole car park: found where cars stay; ${int(tEval.events.in)} cars in, ${int(tEval.events.out)} out`, C.accent3]);
+  else cards.push([`${int(tEval.events.in)} in, ${int(tEval.events.out)} out`, "cars seen coming in and leaving", C.accent3]);
   const rgap = 0.15;
   const rh = (4.9 - (cards.length - 1) * rgap) / cards.length;
   cards.forEach(([v, l, col], i) => {
@@ -282,7 +285,7 @@ pres.addSection({ title: "Product and demo" });
   });
 
   s.addNotes(
-    `1:40, live. Open https://oqim-audit.vercel.app/tracker. These are ${lots.length} real car park cameras from the PKLot dataset: ${lots.map((l) => `${l.name} with ${l.capacity} spaces`).join(", ")}, one morning each from ${tracker.clock.start} to ${tracker.clock.end}. Press play. Every space is marked free or taken from the camera frame; when a space turns taken, a car came in, when it turns free, a car left. Over ${int(tEval.frames)} frames, ${pct(tEval.accuracy)} of ${int(tEval.spaces)} space readings match the dataset's hand labels. The free count is off by a median of ${tEval.freeErr.median} spaces, ${tEval.freeErr.p90} at the 90th percentile. The tracker saw ${int(tEval.events.in)} cars come in and ${int(tEval.events.out)} leave.${fc ? ` The forecast for ${fc.h} minutes ahead is off by ${f1(fc.mae)} spaces on average, against ${f1(fc.naiveMae)} for "same as now", over ${int(fc.n)} forecasts.` : ""} Then pick an arrival time and show which car park the tracker advises.`
+    `1:40, live. Open https://oqim-audit.vercel.app/tracker. These are ${lots.length} real car park cameras from the PKLot dataset: ${lots.map((l) => `${l.name} with ${l.capacity} spaces`).join(", ")}, one morning each from ${tracker.clock.start} to ${tracker.clock.end}. Press play. Every space is marked free or taken from the camera frame; when a space turns taken, a car came in, when it turns free, a car left. Over ${int(tEval.frames)} frames, ${pct(tEval.accuracy)} of ${int(tEval.spaces)} space readings match the dataset's hand labels. The free count is off by a median of ${tEval.freeErr.median} spaces, ${tEval.freeErr.p90} at the 90th percentile. The tracker saw ${int(tEval.events.in)} cars come in and ${int(tEval.events.out)} leave.${fc ? ` The forecast for ${fc.h} minutes ahead is off by ${f1(fc.mae)} spaces on average, against ${f1(fc.naiveMae)} for "same as now", over ${int(fc.n)} forecasts.` : ""}${tEval.whole ? ` The dataset labels only part of each car park, so the tracker also finds the rest: wherever a car stays in one place for 20 minutes is a space. That adds ${int(tEval.whole.extra)} spaces to the ${int(tEval.whole.labelled)} labelled ones, and on the labelled part the same method finds ${int(tEval.whole.labelledFound)} of the ${int(tEval.whole.labelledUsed)} spaces cars used.` : ""} Then pick an arrival time and show which car park the tracker advises, and set 40 drivers asking at once: the navigator sends all of them to the nearest car park, the tracker spreads them.`
   );
 }
 
@@ -322,7 +325,7 @@ pres.addSection({ title: "Product and demo" });
   );
 
   s.addNotes(
-    `0:30. The detector itself, measured on images we did not tune on. ${int(pTest.images)} held-out PKLot images, ${int(pTest.spaces)} spaces: ${pct(pTest.accuracy)} right. When it calls a space taken it is right ${pct(pTest.precision)} of the time, and it finds ${pct(pTest.recall)} of the taken spaces. Sunny ${pct(pW.sunny.accuracy)}, cloudy ${pct(pW.cloudy.accuracy)}, rainy ${pct(pW.rainy.accuracy)}. The free count per image is off by a median of ${pFree.median} spaces. Be honest: PKLot has no night frames, so night is not measured. It runs in the browser on /parking; YOLO26n, the same model as the tracker.`
+    `0:30. The detector itself, measured on images we did not tune on. ${int(pTest.images)} held-out PKLot images, ${int(pTest.spaces)} spaces: ${pct(pTest.accuracy)} right. When it calls a space taken it is right ${pct(pTest.precision)} of the time, and it finds ${pct(pTest.recall)} of the taken spaces. Sunny ${pct(pW.sunny.accuracy)}, cloudy ${pct(pW.cloudy.accuracy)}, rainy ${pct(pW.rainy.accuracy)}. The free count per image is off by a median of ${pFree.median} spaces. Be honest: PKLot has no night frames, so night is not measured. It runs in the browser on /parking with YOLO26n; the tracker's counts use the larger YOLO26m with the same rule.`
   );
 }
 
@@ -379,8 +382,8 @@ pres.addSection({ title: "Technology" });
   panel(s, M, 1.85, CW, 3.15, "Pipeline frame");
   s.addText("For each car park camera", { x: M + 0.3, y: 1.95, w: 7, h: 0.35, fontFace: "Arial", bold: true, fontSize: 14, color: C.text2, margin: 0, valign: "middle", isTextBox: true, objectName: "Pipeline label" });
   const boxes = [
-    ["Frames", `One frame${frameStep ? ` every ${frameStep} min` : ""} from an ordinary fixed camera. The spaces are outlined once per camera.`],
-    ["Detect", "YOLO26n (10 MB), whole frame plus 3 x 3 tiles at 960 px. Cars, buses and trucks."],
+    ["Frames", `One frame${frameStep ? ` every ${frameStep} min` : ""} from an ordinary fixed camera. Labelled spaces, plus the ones found where cars stay 20 minutes.`],
+    ["Detect", "YOLO26m on the tracker frames, YOLO26n (10 MB) in the browser; whole frame plus 3 x 3 tiles at 960 px."],
     ["Space state", "Taken when one box covers 40% of the space. It changes only when two frames in a row agree."],
     ["Forecast", `Free spaces, cars in and out. Free spaces ${fc ? `${fc.h} min ` : ""}ahead from the last 20 minutes' trend and the usual weekday morning.`],
     ["Advise", "Drivers placed one by one on the car park and route of least door-to-door time, counting those already sent."],
@@ -424,7 +427,7 @@ pres.addSection({ title: "Technology" });
   );
 
   s.addNotes(
-    `0:40. For each car park camera: one frame${frameStep ? ` every ${frameStep} minutes` : ""}, from an ordinary fixed camera. The spaces are outlined once per camera. YOLO26n, 10 MB, finds cars, buses and trucks on the whole frame and on 3 by 3 tiles at 960 pixels, so small cars at the back are not missed. A space is taken when one box covers 40% of it, and it changes state only when two frames in a row agree, which removes most flicker. From the states we get the free count and every car in and out. The forecast takes the spaces taken now and adds the trend: half from the last 20 minutes, half from the car park's typical weekday morning, from the PKLot labels of its other weekdays. It is checked against the hand labels of the frame that many minutes later. The advice is the district model: drivers placed one by one, counting the ones already sent. The detector runs in ONNX Runtime Web, on WebGPU or WebAssembly; no GPU server, no number plates or faces read. Detector and worker are reused from our elimination system, and we say so.`
+    `0:40. For each car park camera: one frame${frameStep ? ` every ${frameStep} minutes` : ""}, from an ordinary fixed camera. The labelled spaces come with the dataset; the rest of the car park is found where a car stays in one place for 20 minutes. YOLO26m on the tracker frames, and the 10 MB YOLO26n in the browser on /parking, find cars, buses and trucks on the whole frame and on 3 by 3 tiles at 960 pixels, so small cars at the back are not missed. A space is taken when one box covers 40% of it, and it changes state only when two frames in a row agree, which removes most flicker. From the states we get the free count and every car in and out. The forecast takes the spaces taken now and adds the trend: half from the last 20 minutes, half from the car park's typical weekday morning, from the PKLot labels of its other weekdays. It is checked against the hand labels of the frame that many minutes later. The advice is the district model: drivers placed one by one, counting the ones already sent. The detector runs in ONNX Runtime Web, on WebGPU or WebAssembly; no GPU server, no number plates or faces read. Detector and worker are reused from our elimination system, and we say so.`
   );
 }
 

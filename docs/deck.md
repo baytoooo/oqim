@@ -58,7 +58,7 @@ https://oqim-audit.vercel.app/parking
 - Rule: a space is taken when one car, bus or truck box with confidence above 0.05 covers at least 40% of the space's area; the detector runs on the whole frame and on 3 x 3 overlapping tiles.
 - Not measured: night. PKLot has no night frames.
 
-Notes: these images were not used to tune the rule. It runs in the browser on /parking, with YOLO26n, the same model as the tracker.
+Notes: these images were not used to tune the rule. It runs in the browser on /parking with YOLO26n; the tracker's counts use the larger YOLO26m with the same rule.
 
 ---
 
@@ -78,8 +78,8 @@ Notes: the drivers are simulated, the free spaces and the camera counts are real
 
 For each car park camera:
 
-1. **Frames:** one frame every 5 minutes from an ordinary fixed camera. The spaces are outlined once per camera.
-2. **Detect:** YOLO26n (10 MB), whole frame plus 3 x 3 tiles at 960 px; cars, buses and trucks.
+1. **Frames:** one frame every 5 minutes from an ordinary fixed camera. Labelled spaces, plus the ones found where cars stay 20 minutes.
+2. **Detect:** YOLO26m on the tracker frames, YOLO26n (10 MB) in the browser on /parking; whole frame plus 3 x 3 tiles at 960 px; cars, buses and trucks.
 3. **Space state:** taken when one box covers 40% of the space; it changes only when two frames in a row agree.
 4. **Forecast:** spaces taken now, plus the trend: the mean of the last 20 minutes' slope and the typical-day slope of the same car park (PKLot labels of its other weekdays). Checked against the hand labels of the frame that many minutes later.
 5. **Advise:** drivers placed one by one on the car park and route of least door-to-door time, counting the drivers already sent (the district model).

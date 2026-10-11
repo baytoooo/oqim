@@ -37,7 +37,7 @@ const polyPts = (poly: number[][]) => poly.map(([x, y]) => `${x},${y}`).join(" "
 
 const trackerSteps = [
   { n: "01", t: "Mark the spaces", d: "Once per camera: the outline of every space on one frame. PKLot ships these outlines with its images." },
-  { n: "02", t: "Free or taken", d: "YOLO26n finds the cars, buses and trucks in each frame. A space is taken when one box covers 40% of it, and it changes only when two frames in a row agree." },
+  { n: "02", t: "Free or taken", d: "YOLO26m finds the cars, buses and trucks in each frame (YOLO26n when it runs in your browser). Spaces nobody labelled are found where a car stays 20 minutes. A space is taken when one box covers 40% of it, and it changes only when two frames in a row agree." },
   { n: "03", t: "In and out", d: "Frame by frame, a space that turns taken is a car coming in, and one that turns free is a car leaving." },
   { n: "04", t: "Forecast", d: "The free spaces at the minute you will arrive, not the minute you ask: the count now plus the trend of the last 20 minutes and of the car park's usual weekday morning." },
   { n: "05", t: "Advise", d: "Each driver gets a car park. Drivers already sent count against its free spaces, so they do not all go to the same one." },
@@ -52,7 +52,7 @@ const parkingProblems = [
 const parkingAssumptions = [
   { k: "Price", d: "Sold per camera per month to the car park operator. We have no price yet; it is the first thing to test with a buyer." },
   { k: "Cameras", d: "Ordinary fixed cameras that already look over the car park. One camera covers the spaces it can see." },
-  { k: "Inference", d: "The detector is YOLO26n, 10 MB. On /parking it runs in the visitor's browser, so there is no server bill per frame." },
+  { k: "Inference", d: "In the browser the detector is YOLO26n, 10 MB: on /parking it runs on the visitor's machine, so there is no server bill per frame. The tracker's counts use the larger YOLO26m." },
 ];
 
 // ---------------------------------------------------------------- signals (the next stage)
