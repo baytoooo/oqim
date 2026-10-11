@@ -235,6 +235,17 @@ const assumptions = [
     </div>
   </section>
 
+  <section class="section wrap" id="tools">
+    <h2 class="tools-h">From one junction to a district</h2>
+    <ul class="tools-grid" role="list">
+      <li><a class="plate" href="/audit" data-reveal><span class="plate-title">Signal audit</span><span class="plate-text">One video: the lights read from the pixels, every crossing, waits, discharge, red-light runs, the elimination rules' events, a Purdue coordination diagram, and signal plans checked on the junction's own vehicles.</span></a></li>
+      <li><a class="plate" href="/network" data-reveal><span class="plate-title">Corridor in 3D</span><span class="plate-text">Pick up to five signalised junctions of Tashkent; the vehicles from the video drive them under the timing now and with a green wave.</span></a></li>
+      <li><a class="plate" href="/city" data-reveal><span class="plate-title">District model, Hong Kong</span><span class="plate-text">22 open traffic cameras and live car park vacancy in Kwun Tong: road load now and 10 minutes ahead, drivers sent to car parks with each other's routes counted.</span></a></li>
+      <li><a class="plate" href="/parking" data-reveal><span class="plate-title">Free spaces from a camera</span><span class="plate-text">Car park camera frames (PKLot): the detector marks every space free or taken in the browser; 97.4% of spaces right on 240 held-out images.</span></a></li>
+      <li><a class="plate" href="/elsewhere" data-reveal><span class="plate-title">It works elsewhere</span><span class="plate-text">Published results of retiming, green waves and parking guidance in other cities, and where Tashkent stands today.</span></a></li>
+    </ul>
+  </section>
+
   <section class="section wrap" id="start">
     <a class="plate zebra cta" href="/audit" data-reveal>
       <span class="plate-title">Run an audit</span>
@@ -348,4 +359,7 @@ const assumptions = [
   @media (prefers-reduced-motion: no-preference) {
     .cta:hover .cta-chev, .cta:focus-visible .cta-chev { transform: translateX(4px); }
   }
+  .tools-h { font: 700 clamp(1.8rem, 3.6vw, 2.6rem)/1.05 var(--font-display); margin: 0 0 var(--sp-5); }
+  .tools-grid { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--sp-4); grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+  .tools-grid .plate { display: flex; flex-direction: column; gap: var(--sp-2); height: 100%; text-decoration: none; }
 </style>
