@@ -53,6 +53,9 @@ const REALIGN_EVERY = 10;
 // the patches to follow the camera as it settles
 const LAMP_MARGIN = 24;
 
+/** onnxruntime-web's files on jsDelivr, the release in package.json. */
+const ORT_CDN = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.30.0/dist/";
+
 let engine: Engine | null = null;
 let job: RunningJob | null = null;
 
@@ -70,7 +73,11 @@ async function hasWebGpu(): Promise<boolean> {
 async function runtime(webgpu: boolean): Promise<OrtModule> {
   const ort = webgpu ? await import("onnxruntime-web/webgpu") : await import("onnxruntime-web/wasm");
   // the .mjs glue is in the bundle; only the .wasm is fetched, from the file Vite emitted
-  ort.env.wasm.wasmPaths = { wasm: new URL(webgpu ? webgpuWasm : cpuWasm, scope.location.href).href };
+  // the 14 to 27 MB .wasm comes from jsDelivr's copy of the same npm release when it answers (it is
+  // much faster than our host from Tashkent), else from the file Vite emitted
+  const name = webgpu ? "ort-wasm-simd-threaded.asyncify.wasm" : "ort-wasm-simd-threaded.wasm";
+  const local = new URL(webgpu ? webgpuWasm : cpuWasm, scope.location.href).href;
+  ort.env.wasm.wasmPaths = { wasm: await fastest([`${ORT_CDN}${name}`, local]) };
   // threads need SharedArrayBuffer, which a page only gets when it is cross-origin isolated
   ort.env.wasm.numThreads = scope.crossOriginIsolated ? Math.min(4, navigator.hardwareConcurrency || 1) : 1;
   ort.env.logLevel = "error";
@@ -110,8 +117,49 @@ async function download(url: string, onProgress?: (f: number) => void): Promise<
 
 /** scene.loadScene, except that scene.bin.gz may arrive inflated already: a server that sends it with
  * Content-Encoding: gzip (Vite's dev server does) has fetch undo the gzip before we see the bytes. */
-async function sceneFiles(base: string): Promise<Scene> {
-  const [json, gz] = await Promise.all([download(base + "scene.json"), download(base + "scene.bin.gz")]);
+/**
+ * Of `urls` (the same file on different hosts), the one that sends its first PROBE_BYTES fastest
+ * right now: the network at an event can make any one host slow. The first URL wins ties and is the
+ * answer when no probe gets through.
+ */
+const PROBE_BYTES = 262144;
+export async function fastest(urls: string[]): Promise<string> {
+  if (urls.length < 2) return urls[0];
+  const probe = async (url: string): Promise<[string, number]> => {
+    const t0 = performance.now();
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), 8000);
+    try {
+      const r = await fetch(url, { headers: { Range: `bytes=0-${PROBE_BYTES - 1}` }, signal: ctl.signal, cache: "no-store" });
+      if (!r.ok) return [url, Infinity];
+      await r.arrayBuffer();
+      return [url, performance.now() - t0];
+    } catch {
+      return [url, Infinity];
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+  const times = await Promise.all(urls.map(probe));
+  const best = times.reduce((a, b) => (b[1] < a[1] * 0.8 ? b : a));
+  return Number.isFinite(best[1]) ? best[0] : urls[0];
+}
+
+/** `name` from the first of `bases` that serves it. */
+async function fetchFirst(bases: string[], name: string, onProgress?: (f: number) => void): Promise<Uint8Array<ArrayBuffer>> {
+  let last: unknown = null;
+  for (const b of bases) {
+    try {
+      return await download(b + name, onProgress);
+    } catch (e) {
+      last = e;
+    }
+  }
+  throw last instanceof Error ? last : new Error(`Could not load ${name}.`);
+}
+
+async function sceneFiles(bases: string[]): Promise<Scene> {
+  const [json, gz] = await Promise.all([fetchFirst(bases, "scene.json"), fetchFirst(bases, "scene.bin.gz")]);
   const constants = JSON.parse(new TextDecoder().decode(json)) as SceneConstants;
   const raw =
     gz[0] === 0x1f && gz[1] === 0x8b
@@ -120,10 +168,13 @@ async function sceneFiles(base: string): Promise<Scene> {
   return new Scene(constants, raw);
 }
 
-async function init(base: string, refs: Record<string, Uint8Array>, allowWebGpu: boolean): Promise<void> {
+async function init(hosts: string[], refs: Record<string, Uint8Array>, allowWebGpu: boolean): Promise<void> {
+  // the host that sends the model fastest first, the others as fallbacks
+  const quick = (await fastest(hosts.map((b) => b + "model.onnx"))).replace(/model\.onnx$/, "");
+  const bases = [quick, ...hosts.filter((b) => b !== quick)];
   const [scene, model, webgpu] = await Promise.all([
-    sceneFiles(base),
-    download(base + "model.onnx", (fraction) => post({ type: "loading", fraction })),
+    sceneFiles(bases),
+    fetchFirst(bases, "model.onnx", (fraction) => post({ type: "loading", fraction })),
     allowWebGpu ? hasWebGpu() : Promise.resolve(false),
   ]);
   const ort = await runtime(webgpu);
@@ -202,7 +253,7 @@ function finish(m: Extract<ToWorker, { type: "finish" }>): void {
 async function handle(m: ToWorker): Promise<void> {
   switch (m.type) {
     case "init":
-      return init(m.base, m.refs, m.allowWebGpu);
+      return init(m.bases ?? [m.base], m.refs, m.allowWebGpu);
     case "align":
       return align(m);
     case "frame":

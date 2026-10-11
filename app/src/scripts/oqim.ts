@@ -6,6 +6,7 @@ import { audit, type Audit, type ModeResult } from "../oqim/audit";
 import { SAMPLE_CONFIG, SAMPLES } from "../oqim/samples";
 import type { AuditConfig, Pt, Rect } from "../oqim/types";
 import type { ClipResult } from "../lib/types";
+import { ASSET_CDN } from "../config";
 import { LocalApi, WORK_WIDTH } from "./local_api";
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -88,14 +89,62 @@ for (const b of document.querySelectorAll<HTMLButtonElement>("[data-sample]")) {
     const s = SAMPLES.find((x) => x.name === b.dataset.sample)!;
     $("pick-status").textContent = `Downloading ${s.name}...`;
     try {
-      const r = await fetch(s.url);
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const blob = await r.blob();
+      const blob = await download([`${ASSET_CDN}${s.url}`, s.url], (got, total) => {
+        $("pick-status").textContent = `Downloading ${s.name}: ${(got / 1e6).toFixed(1)}${total ? ` of ${(total / 1e6).toFixed(0)}` : ""} MB`;
+      });
       await choose(new File([blob], `${s.name}.mp4`, { type: "video/mp4" }), SAMPLE_CONFIG);
     } catch (e) {
       $("pick-status").textContent = `Could not download the sample (${e instanceof Error ? e.message : e}).`;
     }
   });
+}
+
+/** Of `urls` (one file on two hosts), the one that sends its first 256 KB fastest now, first on ties. */
+async function fastest(urls: string[]): Promise<string[]> {
+  const probe = async (url: string): Promise<number> => {
+    const t0 = performance.now();
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), 8000);
+    try {
+      const r = await fetch(url, { headers: { Range: "bytes=0-262143" }, signal: ctl.signal, cache: "no-store" });
+      if (!r.ok) return Infinity;
+      await r.arrayBuffer();
+      return performance.now() - t0;
+    } catch {
+      return Infinity;
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+  const t = await Promise.all(urls.map(probe));
+  const order = urls.map((u, i) => [u, t[i]] as const).sort((a, b) => (b[1] < a[1] * 0.8 ? 1 : a[1] < b[1] * 0.8 ? -1 : 0));
+  return order.map(([u]) => u);
+}
+
+/** The file at the fastest of `urls`, read with progress; the others are fallbacks. */
+async function download(urls: string[], onProgress: (got: number, total: number) => void): Promise<Blob> {
+  let last: unknown = null;
+  for (const url of await fastest(urls)) {
+    try {
+      const r = await fetch(url);
+      if (!r.ok || !r.body) throw new Error(`HTTP ${r.status}`);
+      const total = Number(r.headers.get("content-length")) || 0;
+      const reader = r.body.getReader();
+      const chunks: Uint8Array<ArrayBuffer>[] = [];
+      let got = 0;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value as Uint8Array<ArrayBuffer>);
+        got += value.length;
+        onProgress(got, total);
+      }
+      return new Blob(chunks, { type: "video/mp4" });
+    } catch (e) {
+      last = e;
+    }
+  }
+  throw last instanceof Error ? last : new Error("download failed");
 }
 
 // ---------------------------------------------------------------- marking

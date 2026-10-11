@@ -27,3 +27,8 @@ export const QUICK_SECONDS = 30;
 export const LIVE_MAX_SECONDS = 600;
 /** The camera's own files are 10-bit 4:2:2 H.264, which not every browser decodes. The demo converts such a file in the browser (src/scripts/transcode.ts); if that fails, it shows this command for converting it on a computer. */
 export const CONVERT_CMD = `ffmpeg -i in.MP4 -t ${UPLOAD_MAX_SECONDS} -vf scale=1920:-2 -pix_fmt yuv420p -c:v libx264 out.mp4`;
+
+/** The model, the scene files and the sample clips are fetched from the repository on GitHub first
+ * (raw.githubusercontent.com is much faster than our host from Tashkent), then from this site. The
+ * files are the same: app/public of the submitted repository. */
+export const ASSET_CDN = "https://raw.githubusercontent.com/baytoooo/oqim/main/app/public";

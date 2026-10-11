@@ -8,7 +8,7 @@
 // device. The live page (live.ts) uses the same worker through live(), with frames it grabs from a
 // camera or a shared screen itself.
 
-import { UPLOAD_MAX_SECONDS } from "../config";
+import { ASSET_CDN, UPLOAD_MAX_SECONDS } from "../config";
 import { readableNote } from "../lib/classes";
 import type { ClipResult, Counts, Job, Sample } from "../lib/types";
 import { ALIGN_DOWNSCALE, rgbaToGray } from "../pipeline/align";
@@ -688,7 +688,8 @@ export class LocalApi implements Api {
           this.engineReady = resolve;
           this.engineFailed = reject;
         });
-        const init: ToWorker = { type: "init", base: new URL("/pipeline/", location.href).href, refs, allowWebGpu: this.backend !== "wasm" };
+        const local = new URL("/pipeline/", location.href).href;
+        const init: ToWorker = { type: "init", base: local, bases: [`${ASSET_CDN}/pipeline/`, local], refs, allowWebGpu: this.backend !== "wasm" };
         worker.postMessage(init, Object.values(refs).map((r) => r.buffer));
         const engine = await ready;
         this.backend = engine.backend;
