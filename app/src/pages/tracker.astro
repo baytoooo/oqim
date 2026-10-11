@@ -21,9 +21,10 @@ import Base from "../layouts/Base.astro";
           <button class="btn" type="button" id="tr-play" aria-pressed="true">Pause</button>
           <input id="tr-time" type="range" min="0" max="220" step="1" value="0" aria-label="Time of day" />
           <span class="mono clock" id="tr-clock">06:55</span>
+          <span class="seg" role="group" aria-label="Spaces"><button class="btn small" type="button" data-view="whole" aria-pressed="true">Whole car park</button><button class="btn small" type="button" data-view="labelled" aria-pressed="false">Labelled spaces</button></span>
           <select id="tr-speed" aria-label="Speed"><option value="2.5">slow</option><option value="5" selected>5 min a second</option><option value="12">fast</option></select>
         </div>
-        <p class="legend"><i class="sw free"></i>free <i class="sw taken"></i>taken <i class="sw in"></i>car came in <i class="sw out"></i>car left</p>
+        <p class="legend"><i class="sw free"></i>free <i class="sw taken"></i>taken <i class="sw in"></i>car came in <i class="sw out"></i>car left <i class="sw dash"></i>space found by the camera (no hand label)</p>
       </div>
       <div class="lots" id="tr-lots" role="group" aria-label="Car parks"></div>
     </div>
@@ -72,6 +73,17 @@ import Base from "../layouts/Base.astro";
   .cam-free { position: absolute; right: 12px; top: 12px; background: rgba(13, 14, 16, .88); color: var(--paint); padding: 8px 12px; border-radius: var(--r-2); text-align: right; }
   .cam-free .v { font-size: 2rem; font-weight: 700; display: block; line-height: 1; }
   .cam-free .l { font-size: .8rem; color: var(--paint-2); }
+  .cam-tag { max-width: calc(100% - 130px); }
+  @media (max-width: 640px) {
+    .cam-tag { font-size: .72rem; padding: 4px 6px; left: 6px; top: 6px; }
+    .cam-free { right: 6px; top: 6px; padding: 4px 8px; }
+    .cam-free .v { font-size: 1.4rem; }
+    .cam-free .l { font-size: .7rem; }
+    .cam-flash { left: 6px; bottom: 6px; }
+    .cam-flash span { font-size: .72rem; }
+    .controls { flex-wrap: wrap; }
+    .controls input[type="range"] { order: 3; flex-basis: 100%; }
+  }
   .cam-flash { position: absolute; left: 12px; bottom: 12px; display: flex; gap: 6px; flex-wrap: wrap; }
   .cam-flash span { background: rgba(13, 14, 16, .88); color: var(--paint); padding: 4px 8px; border-radius: var(--r-2); font-size: .85rem; animation: pop 1.6s ease-out forwards; }
   @keyframes pop { 0% { opacity: 0; transform: translateY(6px); } 12% { opacity: 1; transform: none; } 80% { opacity: 1; } 100% { opacity: 0; } }
@@ -82,6 +94,9 @@ import Base from "../layouts/Base.astro";
   .legend { color: var(--muted); font-size: .85rem; margin: var(--sp-2) 0 0; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
   .legend.small { font-size: .8rem; }
   .sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 4px; vertical-align: middle; }
+  .sw.dash { background: transparent; border: 2px dashed #3fd27f; }
+  .seg { display: inline-flex; gap: 4px; }
+  .seg .btn[aria-pressed="true"] { background: var(--zebra); border-color: var(--zebra); color: var(--ink); }
   .sw.free { background: #3fd27f; } .sw.taken { background: #ff5b4c; } .sw.in { background: #ffb224; } .sw.out { background: #fff; }
   .ln { display: inline-block; width: 20px; height: 0; border-top: 3px solid #ffb224; margin-right: 4px; vertical-align: middle; }
   .ln.gt { border-top: 2px dotted var(--paint-2); } .ln.fc { border-top: 3px dashed #57a6ff; }

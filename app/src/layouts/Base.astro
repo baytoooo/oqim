@@ -19,7 +19,7 @@ interface Props {
   ogUrl?: boolean;
 }
 const { title, description, active = "", ogUrl = true } = Astro.props;
-const fullTitle = title === PRODUCT ? `${PRODUCT}: a traffic signal audit from one video` : `${title} | ${PRODUCT}`;
+const fullTitle = title === PRODUCT ? `${PRODUCT}: a parking tracker from car park cameras` : `${title} | ${PRODUCT}`;
 // link previews (Telegram, Slack) need absolute URLs; `site` is set in astro.config.mjs.
 // The build sees "/results/"; the site links "/results", so og:url drops the trailing slash.
 const pageUrl = ogUrl ? new URL(Astro.url.pathname.replace(/(.)\/$/, "$1"), Astro.site).href : undefined;

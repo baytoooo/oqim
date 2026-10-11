@@ -13,6 +13,10 @@ export interface LotFrame {
   gt: string;
   in: number;
   out: number;
+  /** The whole car park: `det` and then the spaces found outside the labelled ones. */
+  whole?: string;
+  inW?: number;
+  outW?: number;
 }
 
 export interface Lot {
@@ -30,6 +34,29 @@ export interface Lot {
   /** Typical share of spaces taken on this camera's other weekdays, by 10-minute bin. */
   profile: { m: number; share: number; n: number }[];
   profileDays: string[];
+  /** Spaces found outside the labelled ones, [x1, y1, x2, y2] in the frame's pixels. */
+  extra?: number[][];
+  /** How many of `spaces` are hand-labelled (the rest were found by the camera). */
+  labelled?: number;
+}
+
+/** The car park with every space the camera found, labelled or not. */
+export function wholeLot(lot: Lot): Lot {
+  const extra = lot.extra ?? [];
+  const inset = (a: number, b: number, f: number) => [a + (b - a) * f, b - (b - a) * f];
+  return {
+    ...lot,
+    labelled: lot.spaces.length,
+    capacity: lot.capacity + extra.length,
+    spaces: [
+      ...lot.spaces,
+      ...extra.map(([x1, y1, x2, y2]) => {
+        const [a, b] = inset(x1, x2, 0.08), [c, d] = inset(y1, y2, 0.08);
+        return [[a, c], [b, c], [b, d], [a, d]] as [number, number][];
+      }),
+    ],
+    frames: lot.frames.map((f) => ({ ...f, det: f.whole ?? f.det, raw: f.whole ?? f.raw, gt: "", in: f.inW ?? f.in, out: f.outW ?? f.out })),
+  };
 }
 
 export interface Trip {

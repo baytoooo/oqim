@@ -1,147 +1,160 @@
 # OQIM defence deck: slide text and speaker notes
 
-7 minutes, hard stop. Split: problem 1:00, live demo 2:00, technology 2:00, budget and ROI 1:30, next steps 0:30.
+7 minutes, hard stop. Split: title and problem 1:00, live demo (tracker, accuracy, district) 2:50, how it works 0:40, business 1:00, next stage 0:50, team 0:30.
 Slide text is in English; the notes under each slide are for the speaker.
+
+The deck is built by `deck/build.js`. It reads its numbers from `app/public/data/` (tracker.json, parking.json, audits.json, hongkong.json, hk_carparks.json, roads_eval.json, team.json). The numbers below are the ones in those files when this was written; if a file changes, rebuild the deck and update this page.
 
 ---
 
-## 1. OQIM. A traffic signal audit from one video
+## 1. OQIM. A parking tracker from car park cameras (0:10)
 
 - Mode: **Startup**
 - Team PariVision, Webster University in Tashkent: Amal Karimov, Komronbek Qodirov, Aziza Adizova
-- Live: https://oqim-audit.vercel.app · Code: https://github.com/baytoooo/oqim
+- Live: https://oqim-audit.vercel.app/tracker · Code: https://github.com/baytoooo/oqim
+- Picture: the PUCPR car park camera at 09:04 on 17 October 2012 (PKLot), 6 free of 100 spaces as our detector read it.
 
-Notes: say the mode out loud on this slide, the rules ask for it.
-
----
-
-## 2. The problem (1:00)
-
-- Signal timing at a junction is set once and rarely checked against today's traffic.
-- Checking it today means a manual study: people at the roadside counting vehicles, then an engineer's calculation.
-- Most controllers are not connected, so their timing cannot be read from a central system.
-- US cities measure signal performance (arrivals on green, split failures) from controller logs (ATSPM). Here those logs are not available.
-
-**User:** the traffic engineer of the city's traffic management service, and the contractors who do junction studies for it.
-**Who pays:** the city (studies are already bought), road-safety and transport projects.
+Notes: say the mode out loud on this slide, the rules ask for it. OQIM is a parking tracker: cameras over a car park count the free spaces, see cars come in and leave, forecast the free spaces for the minute you arrive, and tell each driver which car park to go to.
 
 ---
 
-## 3. Live demo (2:00)
+## 2. The problem (0:50)
 
-1. Open https://oqim-audit.vercel.app/audit on the jury's laptop or phone.
-2. Take the jury's video (or a sample). Draw the stop line (2 clicks), click the signal head.
-3. Run. A 2-minute clip takes about 25 s on a laptop GPU; the video never leaves the device.
-4. Show: the lights read from the head, every crossing as a tick, the queue line, the plans table, the model check line.
+- A driver picks a car park by distance or habit, and learns it is full at the gate.
+- Then they drive on to the next one. While searching, the car is part of the traffic.
+- A navigator sends every driver to the same nearest car park.
+- **17 hours** a year a US driver spends searching for parking ([INRIX, 2017](https://inrix.com/press-releases/parking-pain-us/)).
+- **About 5%** of off-street car parks publish live free spaces ([Parkopedia](https://business.parkopedia.com/blog/parking-availability-how-predictive-and-responsive-data-work-together-to-provide-drivers-with-the-best-possible-parking-experience)).
+- **Tashkent:** Poytaxt Parking plans paid parking on 86 streets with 13,208 spaces, first come, first served ([Spot.uz](https://www.spot.uz/ru/2025/05/06/poytaxt-parking)).
+- Where drivers are shown the space, it works: SFpark cut cruising for parking by 50% on its pilot blocks ([ACCESS](https://accessmagazine.org/fall-2016/cruising-for-parking-lessons-from-san-francisco/)).
 
-Notes: if the jury's video has no signal head in view, leave the head unset; OQIM reads the lights from the traffic. Backup: the recorded run of C3896.
-
----
-
-## 4. How it works (technology, 1:00)
-
-Browser only. Inference on the user's device (WebGPU, or WebAssembly on the CPU).
-
-1. **Detect and track:** YOLO26s (ONNX Runtime Web), ByteTrack port, 5 frames per second. Reused from our elimination system.
-2. **Read the lights:** colour contrast of the lit lamp inside the head's box, scaled per clip; if no head is visible, greens come from when the queue moves off.
-3. **Measure:** stop-line crossings by side, time stood before the line, arrivals on green, discharge rate (busiest 10 s of each green), red-light runs, queue.
-4. **Replay:** a point-queue model runs the clip's own vehicles through the junction. It must first reproduce the measured crossings.
-5. **Plans:** now, Webster (1958), a fixed plan searched on the replay (cycle, split and the phases out of view), actuated, max-pressure (Varaiya 2013), and OQIM predictive (rollout over the next 30 s of arrivals).
-6. **Corridor:** the same vehicles on up to five real junctions of Tashkent in 3D, with a green wave.
+**User:** drivers going to busy places (malls, business centres, hospitals, stations).
+**Who pays:** car park operators, and the city, which wants less searching traffic.
 
 ---
 
-## 5. Measured on our clips (technology, 1:00)
+## 3. Live demo: the tracker (1:40)
 
-Four clips of one Tashkent junction (the organisers' footage, 18 minutes), southbound approach:
+https://oqim-audit.vercel.app/tracker
 
-| Clip | Length | Cycle read | Vehicles | Model check: median departure error | Wait: model / measured |
-|---|---|---|---|---|---|
-| C3896 | 5:40 | 75 s | 130 | 0.50 s | 9.3 / 12.8 s |
-| C3897 | 5:18 | 75 s | 127 | 0.29 s | 10.0 / 10.5 s |
-| C3902 | 5:18 | 80 s | 170 | 0.55 s | 12.3 / 12.0 s |
-| C3905 | 2:08 | 80 s | 59 | 4.54 s | 10.3 / 6.6 s |
+- 3 PKLot cameras, one morning each, 06:55 to 10:35, a frame every 5 minutes: PUCPR (100 spaces, 2012-10-17), UFPR05 (40 spaces, 2013-03-22), UFPR04 (28 spaces, 2013-01-18).
+- **98.8%** of space readings right: 112 frames, 6,844 readings, against the dataset's hand labels.
+- Free count off by a median of **1** space, **4** at the 90th percentile.
+- Forecast 10 minutes ahead: off by **3.0** spaces on average, against **4.6** for "same as now" (101 forecasts).
+- Cars seen: **146 in, 11 out**.
 
-- Webster's textbook plan was **worse** than the current timing on all four clips (for example 29.7 s against 10.0 s on C3897). Every plan keeps the share of the cycle the cross street has today, because its traffic is out of view. That is why OQIM never recommends a plan before replaying it on the junction's own vehicles.
-- The current timing of this approach is close to the best fixed plan we found (9.4 s against 10.0 s on C3897); the predictive mode cut the mean wait by 13% on C3897 (10.0 to 8.7 s) and by 18% on C3902 (12.3 to 10.1 s).
-- Known failure cases: short clips (under 2 cycles, see C3905), long queues where tracks break, a stop line drawn over two directions, free right turns counted as red crossings, night and rain not yet measured on a test set of our own.
-
-Source: these numbers were computed with the elimination pipeline's tracks (YOLO26m at 1280 px, 10 fps); the browser runs YOLO26s at 5 fps. Re-run in the browser before the defence and update if they differ.
+Notes: press play. Every space is marked free or taken from the frame; a space that turns taken is a car coming in, one that turns free is a car leaving. Then pick an arrival time and show which car park the tracker advises. Say clearly: these are recorded mornings of a public dataset, not a live feed yet.
 
 ---
 
-## 5b. From one junction to a corridor (simulation, 0:30 inside the demo)
+## 4. Measured: space detection (/parking) (0:30)
 
-https://oqim-audit.vercel.app/network: pick up to five signalised junctions of Tashkent on the map (OpenStreetMap road graph, 309 signalised junctions in the centre); the vehicles measured on the video drive them in 3D, two junctions before the audited one and two after.
+https://oqim-audit.vercel.app/parking
 
-Sample corridor, Amir Temur Avenue northbound, 1.46 km, 5 signals, 3 lanes (from the discharge rate on the video), 224 vehicles in 10 minutes:
+- **97.4%** of 13,447 spaces right on 240 held-out PKLot images.
+- Precision for taken 99.1%, recall for taken 95.3%.
+- By weather: sunny 97.0%, cloudy 99.0%, rainy 96.1%.
+- Free count per image off by a median of 0, 4 at the 90th percentile.
+- Rule: a space is taken when one car, bus or truck box with confidence above 0.05 covers at least 40% of the space's area; the detector runs on the whole frame and on 3 x 3 overlapping tiles.
+- Not measured: night. PKLot has no night frames.
 
-| | Timing now (offsets unknown, taken pseudo-random) | OQIM green wave (same cycle and green) |
-|---|---|---|
-| Mean delay at the signals | 141 s | 24 s |
-| Stops per vehicle | 4.58 | 0.60 |
-
-Say clearly: this is a simulation (Intelligent Driver Model), one direction, cross streets not simulated; only the offsets change, so the cross streets keep their time. The real offsets of these junctions are unknown to us.
+Notes: these images were not used to tune the rule. It runs in the browser on /parking, with YOLO26n, the same model as the tracker.
 
 ---
 
-## 5d. A whole district, live: Kwun Tong, Hong Kong (demo, 0:45)
+## 5. Live demo: a district, Kwun Tong, Hong Kong (0:40)
 
 https://oqim-audit.vercel.app/city
 
-- 22 Transport Department traffic cameras within 700 m (open data, DATA.GOV.HK), counted by YOLO26m every 1 to 2 minutes; the load on each road now and forecast 10 minutes ahead (Holt's smoothing, backtested against "same as last").
-- Car park vacancy live from the Transport Department API (private cars), about 20 car parks around the destination.
-- 60 drivers heading to Kwun Tong MTR station within 10 minutes (simulated, seeded). "Nearest": every driver to the closest car park, as a navigator does. "OQIM": drivers placed one by one; each gets the car park and route of least door-to-door time given the roads already loaded by the drivers placed before and the spaces they will take.
-- At 13:45 Hong Kong time on 11 October: the nearest car park (apm) had 0 free spaces, so all 60 "nearest" drivers arrived to a full car park; with OQIM 5 did. Door to door 15.5 min against 12.7 min (minus 18%), vehicle-km with searching 305 against 181 (minus 41%).
-- Say: the drivers are simulated, the free spaces and the camera counts are real, and both strategies are judged by the same model (BPR travel times, 8 minutes of searching at a full car park).
-- The "Add drivers one by one" button shows each new route loading the roads the next driver sees.
+- 22 Transport Department traffic cameras (open data, DATA.GOV.HK), counted by YOLO26m; live vacancy of the car parks around the destination (28 in the stored file).
+- 60 drivers heading to Kwun Tong MTR station (simulated, seeded). "Nearest": every driver to the closest car park, as a navigator does. "OQIM": drivers placed one by one; each gets the car park and route of least door-to-door time, given the roads and spaces already taken by the drivers placed before.
+- At 13:45 Hong Kong time on 11 October: the nearest car park had 0 free spaces, so all 60 "nearest" drivers arrived to a full car park; with OQIM 5 did. Door to door 15.5 min against 12.7 min (minus 18%), vehicle-km with searching 305 against 181 (minus 41%).
+
+Notes: the drivers are simulated, the free spaces and the camera counts are real, and both strategies are judged by the same model (BPR travel times, 8 minutes of searching at a full car park). The "Add drivers one by one" button shows each new route loading the roads the next driver sees.
 
 ---
 
-## 5c. It already works elsewhere, and Tashkent has started (impact, 0:45)
+## 6. How it works (technology, 0:40)
 
-- **Tashkent:** about 1,000 signalised junctions; 125 connected to TsODD's adaptive system, 545 planned for 2026; presidential decree of 4 December 2025 on congestion. No measured results published. ([Anhor.uz](https://anhor.uz/news/digital-brain/), [Yuz.uz](https://yuz.uz/ru/news/umne-svetofor-pomogut-sokratit-probki-i-izmenit-upravlenie-transportom-v-tashkente))
-- **Google Project Green Light**, 12 cities: up to 30% fewer stops, up to 10% less emissions at about 70 junctions, from Maps data ([Seattle DOT](https://sdotblog.seattle.gov/2024/01/04/project-green-light)).
-- **Surtrac, Pittsburgh:** travel time down more than 25%, idling down 40% ([Smart Cities Dive](https://www.smartcitiesdive.com/news/this-ai-traffic-system-in-pittsburgh-has-reduced-travel-time-by-25/447494/)).
-- **SCOOT, UK:** about 12% less delay than up-to-date fixed plans, 20% than typical ones ([DfT TAL 7/99](https://tsrgd.co.uk/pdf/tal/1999/tal-7-99.pdf)).
-- **Utah ATSPM:** the same measures as OQIM (arrivals on green, split failures) from controller logs; USD 108 million projected savings over 10 years ([FHWA](https://ops.fhwa.dot.gov/publications/fhwahop20003/ch4.htm)).
-- **Copenhagen green wave:** travel time down 17%, stops from six to under one ([Centre for Public Impact](https://www.centreforpublicimpact.org/case-study/green-waves-bicycles-copenhagen)).
-- **Parking (next step):** SFpark cut cruising by 50% and search time by 43% ([ACCESS](https://accessmagazine.org/fall-2016/cruising-for-parking-lessons-from-san-francisco/)); INRIX: 17 hours a year per US driver searching ([INRIX](https://inrix.com/press-releases/parking-pain-us/)); Tashkent's Poytaxt Parking plans 86 streets, 13,208 spaces ([Spot.uz](https://www.spot.uz/ru/2025/05/06/poytaxt-parking)).
+For each car park camera:
 
-Line to say: "Cities that retime and coordinate signals cut stops and delay. They can do it because they measure. Most junctions in Tashkent cannot be measured today; OQIM measures them from one video."
+1. **Frames:** one frame every 5 minutes from an ordinary fixed camera. The spaces are outlined once per camera.
+2. **Detect:** YOLO26n (10 MB), whole frame plus 3 x 3 tiles at 960 px; cars, buses and trucks.
+3. **Space state:** taken when one box covers 40% of the space; it changes only when two frames in a row agree.
+4. **Forecast:** spaces taken now, plus the trend: the mean of the last 20 minutes' slope and the typical-day slope of the same car park (PKLot labels of its other weekdays). Checked against the hand labels of the frame that many minutes later.
+5. **Advise:** drivers placed one by one on the car park and route of least door-to-door time, counting the drivers already sent (the district model).
 
----
-
-## 6. Why it is hard to copy
-
-- **Reading the lights from pixels**, with no controller access: our elimination work (signal reader, registration, rules, 98 labelled events) made this possible in a day.
-- **The replay check:** plans are judged on the junction's own vehicles, and the model must reproduce the measured crossings first.
-- **Runs in the browser:** no server, no GPU bill, the video stays on the device (Uzbekistan's personal data law asks for local storage of personal data; we store none).
-- Domain knowledge: Webster's method, saturation flow, ATSPM measures.
+The detector runs in ONNX Runtime Web (WebGPU or WebAssembly). No GPU server. No number plates or faces are read.
+Reused, declared: the detector and ONNX worker from our elimination system. Built for the final: the tracker, the space rule and its test, the district model, the signal audit.
 
 ---
 
-## 7. Budget and ROI (1:30)
+## 7. Budget and ROI (0:45)
 
 All numbers are assumptions to be checked with the customer.
 
-**Pilot, 3 months, 20 junctions in Tashkent with the city's traffic management service**
+**Pilot, 3 months, with one car park operator, on cameras it already has**
 - People: 3 engineers part time (main cost).
-- Infrastructure: static hosting (free to USD 20 a month). No GPU server: inference runs on the user's laptop.
-- Data: videos the service already records or films for us; no data licences to buy.
+- Hosting: static, free to USD 20 a month. No GPU server.
+- Data: frames from the operator's own cameras; no data licences to buy.
 
-**Unit economics, per junction audit**
-- Our cost: an engineer's 30 minutes to film and check; compute is zero.
-- Price: below the cost of a manual study of the same junction (assumption: price per audit set after the pilot).
-- Value to the city: the page turns saved vehicle-hours into money with inputs the engineer sets (hours a day at this traffic, value of an hour, fuel while idling at 0.8 litres an hour, 2.31 kg CO2 a litre).
+**Per camera**
+- No sensors in the ground: one camera covers the spaces it sees.
+- Our cost: outlining the spaces once, and checking a sample of frames by hand.
+- Price: per camera per month, set in the pilot.
 
-**Payback:** state it from the pilot inputs; do not quote a number we have not measured.
+**Value and payback**
+- Value a month = extra spaces filled × hours × tariff, plus drivers no longer turned away at the gate.
+- Payback = price ÷ value a month. We state it from the pilot inputs, not before.
+- For the city: less searching traffic, which the district model counts in vehicle-km.
 
 ---
 
-## 8. Next steps (0:30)
+## 8. Why it is hard to copy (0:15)
 
-- Pilot with the traffic management service: 20 junctions, their videos, their engineer marks the lines.
-- Test set of our own at night and in rain, with manual counts.
-- Network: link neighbouring junctions (the predictive mode needs the camera upstream) and offsets for green waves.
-- Export a timing sheet the engineer can enter into the controller.
+- **A forecast, not only a count:** free spaces for the minute you arrive, checked against "same as now" (3.0 against 4.6 spaces off, 10 minutes ahead).
+- **Drivers spread, not herded:** each driver counts against the spaces and roads of the next.
+- **Ordinary cameras:** no sensor per space; the detector runs in a browser tab; no plates or faces read.
+- **The same cameras, more products:** our signal audit reads traffic lights from pixels with no controller access. In the browser it agrees with our elimination lamp reader on 98.8% of frames of C3896.
+
+---
+
+## 9. Next stage: the same cameras can later time the lights (/audit) (0:30)
+
+Signal audit from one video: the lights read from pixels, every vehicle over the stop line, then signal plans checked on a replay of the junction's own vehicles. Four clips of one Tashkent junction (the organisers' footage, 18 minutes), southbound approach:
+
+| Clip | Length | Cycle read | Vehicles | Replay check: median departure error | Wait now | Webster (1958) | OQIM predictive |
+|---|---|---|---|---|---|---|---|
+| C3896 | 5:40 | 75 s | 130 | 0.50 s | 9.3 s | 32.6 s | 9.1 s |
+| C3897 | 5:18 | 75 s | 127 | 0.29 s | 10.0 s | 29.7 s | 8.7 s |
+| C3902 | 5:18 | 80 s | 170 | 0.55 s | 12.3 s | 28.8 s | 10.1 s |
+| C3905 | 2:08 | 80 s | 59 | 4.54 s | 10.3 s | 11.9 s | 7.3 s |
+
+- Webster's textbook plan was worse than the current timing on all four clips (29.7 s against 10.0 s on C3897). So OQIM never recommends a plan before it replays it.
+- Predictive assumes the next 30 s of arrivals are known, which needs a camera upstream.
+- C3905 is under 2 cycles and fails the replay check; the page says so.
+- Tracks: our elimination pipeline (YOLO26m at 1280 px, 10 fps). Night and rain not yet measured on a test set of our own.
+
+---
+
+## 10. Next stage: a green wave in 3D, and road damage on a map (0:20)
+
+- https://oqim-audit.vercel.app/network: Amir Temur Avenue northbound, 1.46 km, 5 signals, 224 vehicles in 10 minutes (simulation, Intelligent Driver Model, one direction; only the offsets change, the real offsets are unknown to us). Mean delay at the signals 141 s to 24 s; stops per vehicle 4.58 to 0.60.
+- https://oqim-audit.vercel.app/roads, a side tool: YOLOv8n fine-tuned on RDD2022, in the browser, mAP50 0.66 and precision 66% on a 300-image sample of the RDD2022 test split.
+- Elsewhere: Copenhagen's green wave cut travel time by 17% ([Centre for Public Impact](https://www.centreforpublicimpact.org/case-study/green-waves-bicycles-copenhagen)); Google Project Green Light, up to 30% fewer stops ([Seattle DOT](https://sdotblog.seattle.gov/2024/01/04/project-green-light)).
+
+---
+
+## 11. Team and next steps (0:30)
+
+- Amal Karimov: captain; scene layout and the signal and vehicle rules.
+- Komronbek Qodirov: pipeline, live demo and website.
+- Aziza Adizova: dev set, pedestrian rules and report.
+
+Next steps:
+1. Pilot: one car park operator, its own cameras, 3 months.
+2. Live feed: frames from a live camera, not a recorded morning.
+3. Night test: PKLot has no night frames; a test set of our own, with hand labels.
+4. Signals: then the same cameras time the lights, with the audit and the green wave.
+
+Thank you. Questions?

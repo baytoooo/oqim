@@ -1,12 +1,18 @@
 # OQIM
 
-A traffic signal audit from one video. Team PariVision, WIUT Hackathon 2026, Computer Vision track final.
+A parking tracker from car park cameras. Team PariVision, WIUT Hackathon 2026, Computer Vision track final.
 
 **Mode: Startup.**
 
-You open a video of a signalised junction and mark it: a stop line across each approach, a click on each vehicle signal head. In the browser, OQIM then reads the signal lights from the pixels, counts every vehicle over the stop lines, measures waits, queues and the discharge rate, and finds red-light runs. It replays the clip's own vehicles through a queue model, checks that the replay gives back the crossings it measured, and then compares signal plans on that replay: the current timing, the Webster (1958) formula, a tuned fixed plan, an actuated controller and a predictive one.
+Cameras over a car park count the free spaces and see each car come in and leave. OQIM forecasts how many spaces will be free at the minute you arrive, and tells each driver which car park to go to, so the drivers do not all go to the same one.
 
-US cities measure the same kind of thing (arrivals on green, split failures) from controller logs with a system called ATSPM. Most controllers in our city are not connected, so OQIM measures it from video, with no access to the controller.
+* `/tracker`, the product: three PKLot car park cameras over a morning. Every space is marked free or taken from the frame, the cars coming in and leaving are counted, and the free spaces are forecast for your arrival. The evaluation against the dataset's hand labels is in `app/public/data/tracker.json`.
+* `/parking`: how well the detector marks spaces, measured on 240 held-out PKLot images (`app/public/data/parking.json`).
+* `/city`: a whole district with live open data from Hong Kong (car park vacancy and traffic cameras in Kwun Tong); drivers are sent to car parks with the roads and spaces of the drivers before them counted.
+
+**Next stage: the same cameras can later time the lights.** The signal audit (`/audit`) opens a video of a signalised junction and, in the browser, reads the signal lights from the pixels, counts every vehicle over the stop lines, measures waits, queues and the discharge rate, and finds red-light runs. It replays the clip's own vehicles through a queue model, checks that the replay gives back the crossings it measured, and then compares signal plans on that replay: the current timing, the Webster (1958) formula, a tuned fixed plan, an actuated controller and a predictive one. `/network` drives the same vehicles through up to five real junctions of Tashkent in 3D, under the timing now and with a green wave. US cities measure the same kind of thing (arrivals on green, split failures) from controller logs with a system called ATSPM; most controllers in our city are not connected, so OQIM measures it from video, with no access to the controller.
+
+`/roads` is a side tool: road damage found in phone photos and put on a map.
 
 ## Run it
 
@@ -51,6 +57,7 @@ The video is never uploaded. No number plates or faces are read.
 | Hong Kong car park vacancy (`app/public/data/hk_carparks.json`, live through `app/api/hkparking.js`) | Transport Department, car park information and vacancy for private cars, via DATA.GOV.HK | DATA.GOV.HK terms of use (attribution) |
 | London JamCam clips and counts (`app/public/data/london.json`, `app/public/media/london/`, live through `app/api/jamcam.js`) | Transport for London JamCams, "Powered by TfL Open Data" | TfL open data terms (based on the Open Government Licence) |
 | Car park frames and space labels on `/parking` (`app/public/media/parking/`, `app/public/data/parking.json`) | PKLot (Almeida et al., Expert Systems with Applications 42(11), 2015), via the Voxel51 copy on Hugging Face; accuracy measured on 240 held-out images in `samples_src/parking_eval.py` | CC BY 4.0 |
+| Car park frames and space labels on `/tracker` (`app/public/media/tracker/`, `app/public/data/tracker.json`) | PKLot (Almeida et al., Expert Systems with Applications 42(11), 2015): frames of 3 cameras, one morning each (PUCPR 2012-10-17, UFPR05 2013-03-22, UFPR04 2013-01-18), via the Voxel51/PKLot mirror on Hugging Face (https://huggingface.co/datasets/Voxel51/PKLot); the typical-day forecast uses the labels of the same car parks on other weekdays | CC BY 4.0 |
 | Road damage model on `/roads` (`app/public/roads/model.onnx`) | YOLOv8n trained on RDD2022 by dronefreak (https://huggingface.co/dronefreak/rdd2022-yolov8n), exported to ONNX with NMS | AGPL-3.0 |
 | Road damage photos and the test sample on `/roads` (`app/public/media/roads/`, `app/public/data/roads_eval.json`) | RDD2022 (Arya et al., arXiv:2209.08538), via https://huggingface.co/datasets/dronefreak/RDD2022; 300 images of the test split for the measured mAP50 | CC BY-SA 4.0 |
 | Published results on `/elsewhere` | The articles and reports linked on that page | Quoted with links |
@@ -68,6 +75,7 @@ Reused, declared: from our elimination-stage system, https://github.com/baytoooo
 
 Built during the final:
 
+* the parking tracker (`app/src/pages/tracker.astro`, `app/src/scripts/tracker.ts`, `app/public/data/tracker.json`, `app/public/media/tracker/`)
 * the audit core, `app/src/oqim/`: tracks and stop line crossings (`tracks.ts`), lights from a head or from the traffic (`phases.ts`), the point-queue replay and its controllers (`sim.ts`), the audit, the plans and the model check (`audit.ts`)
 * the audit page (`app/src/pages/audit.astro`)
 * the landing page and the Method page (`app/src/pages/index.astro`, `app/src/pages/method.astro`)

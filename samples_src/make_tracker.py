@@ -41,6 +41,67 @@ def minutes(s):
     return int(s[:2]) * 60 + int(s[3:5])
 
 
+WHOLE_TEXT = ("the rest of the car park, outside the hand-labelled spaces: a space is wherever a vehicle box "
+              "(confidence 0.3 or more) stays in one place, IoU 0.5 with itself, on 4 frames or more (20 minutes); "
+              "it is taken when a box with confidence 0.15 or more overlaps it with IoU 0.4, and changes state when "
+              "two frames in a row agree")
+MIN_FRAMES, SEEN_CONF, OCC_CONF = 4, 0.3, 0.15
+
+
+def iou(a, b):
+    ix = max(0.0, min(a[2], b[2]) - max(a[0], b[0]))
+    iy = max(0.0, min(a[3], b[3]) - max(a[1], b[1]))
+    i = ix * iy
+    u = (a[2] - a[0]) * (a[3] - a[1]) + (b[2] - b[0]) * (b[3] - b[1]) - i
+    return i / u if u > 0 else 0.0
+
+
+def discover(all_boxes, labelled, frames):
+    """Spaces outside the labelled ones, from where vehicles stay; boxes in 0..1 of the frame."""
+    cands = []  # [x1, y1, x2, y2, frames seen]
+    norm = []
+    for boxes, w, h in all_boxes:
+        nb = [(b[0] / w, b[1] / h, b[2] / w, b[3] / h, b[4]) for b in boxes]
+        nb = [b for b in nb if (b[2] - b[0]) * (b[3] - b[1]) < 0.03]
+        norm.append(nb)
+        hit = set()
+        for b in nb:
+            if b[4] < SEEN_CONF:
+                continue
+            best, bi = 0.5, -1
+            for i, c in enumerate(cands):
+                v = iou(b, c)
+                if v >= best:
+                    best, bi = v, i
+            if bi < 0:
+                cands.append([b[0], b[1], b[2], b[3], 1]); hit.add(len(cands) - 1)
+            elif bi not in hit:
+                c = cands[bi]; n = c[4]
+                for j in range(4):
+                    c[j] = (c[j] * n + b[j]) / (n + 1)
+                c[4] = n + 1; hit.add(bi)
+    keep = sorted([c for c in cands if c[4] >= MIN_FRAMES], key=lambda c: -c[4])
+    sp = []
+    for c in keep:
+        if any(iou(c, d) > 0.3 for d in sp):
+            continue
+        sp.append(c)
+    # labelled spaces a stay-box found (for the check), then drop the boxes inside labelled spaces
+    used = [i for i in range(len(labelled)) if sum(1 for f in frames if f["gt"][i] == "1") >= MIN_FRAMES]
+    found = sum(1 for i in used if any(coverage(labelled[i], [c[:4]]) >= 0.4 for c in sp))
+    def inside_labelled(c):
+        return any(coverage(P, [c[:4]]) >= 0.25 or coverage([(c[0], c[1]), (c[2], c[1]), (c[2], c[3]), (c[0], c[3])], [(min(x for x, _ in P), min(y for _, y in P), max(x for x, _ in P), max(y for _, y in P))]) >= 0.25 for P in labelled)
+    extra = [c for c in sp if not inside_labelled(c)]
+    auto, state, prev = [], None, None
+    for nb in norm:
+        raw = ["1" if any(b[4] >= OCC_CONF and iou(b, c) >= 0.4 for b in nb) else "0" for c in extra]
+        state = raw[:] if state is None else [raw[k] if raw[k] == prev[k] else state[k] for k in range(len(extra))]
+        prev = raw
+        auto.append("".join(state))
+    px = [[c[0] * OUT_W, c[1] * OUT_H, c[2] * OUT_W, c[3] * OUT_H] for c in extra]
+    return px, auto, {"used": len(used), "found": found}
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", required=True)
@@ -69,16 +130,17 @@ def main():
 
     from ultralytics import YOLO
     model = YOLO(a.weights)
-    cache_p = os.path.join(a.data, "tracker_dets_%s.json" % os.path.basename(a.weights).split(".")[0])
+    cache_p = os.path.join(a.data, "tracker_dets_conf_%s.json" % os.path.basename(a.weights).split(".")[0])
     cache = json.load(open(cache_p)) if os.path.exists(cache_p) else {}
     media = os.path.join(APP, "media", "tracker")
     os.makedirs(media, exist_ok=True)
 
-    lots_out, allrows, free_err, ev_in, ev_out = [], [], [], 0, 0
+    lots_out, allrows, free_err, ev_in, ev_out, disc_rows = [], [], [], 0, 0, []
     for L in LOTS:
         rs = sel[L["id"]]
         os.makedirs(os.path.join(media, L["id"]), exist_ok=True)
         frames, ids, prev_raw, state = [], None, None, None
+        all_boxes = []
         for r in rs:
             p = get(r)
             im = cv2.imread(p)
@@ -91,9 +153,10 @@ def main():
                         bx = list(map(float, b.xyxy[0].tolist()))
                         if ti and (bx[2] - bx[0]) * (bx[3] - bx[1]) > MAX_TILE_BOX * (x1 - x0) * (y1 - y0):
                             continue
-                        out.append([bx[0] + x0, bx[1] + y0, bx[2] + x0, bx[3] + y0])
+                        out.append([bx[0] + x0, bx[1] + y0, bx[2] + x0, bx[3] + y0, float(b.conf[0])])
                 cache[r["file"]] = out
             boxes = cache[r["file"]]
+            all_boxes.append((boxes, w, h))
             sp = sorted(r["spaces"], key=lambda s: int(s["id"]) if str(s["id"]).isdigit() else 0)
             if ids is None:
                 ids = [s["id"] for s in sp]
@@ -114,6 +177,15 @@ def main():
             frames.append({"t": t, "src": src, "det": "".join(map(str, state)), "raw": "".join(map(str, raw)), "gt": "".join(map(str, gt))})
             allrows += [(g, d) for g, d in zip(gt, raw)]
             free_err.append(abs(sum(state) - sum(gt)))
+        extra, auto, found = discover(all_boxes, [[(x / OUT_W, y / OUT_H) for x, y in P] for P in polys], frames)
+        disc_rows.append(found)
+        for k, f in enumerate(frames):
+            f["whole"] = f["det"] + auto[k]
+        for k in range(1, len(frames)):
+            a_, b_ = frames[k - 1]["whole"], frames[k]["whole"]
+            frames[k]["inW"] = sum(1 for x, y in zip(a_, b_) if x == "0" and y == "1")
+            frames[k]["outW"] = sum(1 for x, y in zip(a_, b_) if x == "1" and y == "0")
+        frames[0]["inW"] = frames[0]["outW"] = 0
         for k in range(1, len(frames)):
             a_, b_ = frames[k - 1]["det"], frames[k]["det"]
             frames[k]["in"] = sum(1 for x, y in zip(a_, b_) if x == "0" and y == "1")
@@ -138,7 +210,7 @@ def main():
                          "weekday": dt.date.fromisoformat(L["day"]).strftime("%A"),
                          "weather": collections.Counter(x["weather"] for x in rs).most_common(1)[0][0],
                          "capacity": len(ids), "w": OUT_W, "h": OUT_H, "spaces": polys,
-                         "frames": frames, "profile": profile, "profileDays": sorted(days)})
+                         "extra": [[round(v, 1) for v in e] for e in extra], "frames": frames, "profile": profile, "profileDays": sorted(days)})
     json.dump(cache, open(cache_p, "w"))
     tp = sum(1 for g, d in allrows if g and d); tn = sum(1 for g, d in allrows if not g and not d)
     fe = sorted(free_err)
@@ -149,7 +221,10 @@ def main():
         "lots": lots_out,
         "eval": {"frames": len(free_err), "spaces": len(allrows), "accuracy": round((tp + tn) / len(allrows), 4),
                  "freeErr": {"median": fe[len(fe) // 2], "p90": fe[int(len(fe) * 0.9)], "mean": round(sum(fe) / len(fe), 2)},
-                 "events": {"in": ev_in, "out": ev_out}},
+                 "events": {"in": ev_in, "out": ev_out},
+                 "whole": {"labelled": sum(l["capacity"] for l in lots_out), "extra": sum(len(l["extra"]) for l in lots_out),
+                           "labelledUsed": sum(d["used"] for d in disc_rows), "labelledFound": sum(d["found"] for d in disc_rows),
+                           "text": WHOLE_TEXT}},
     }
     os.makedirs(os.path.join(APP, "data"), exist_ok=True)
     json.dump(out, open(os.path.join(APP, "data", "tracker.json"), "w"), separators=(",", ":"))

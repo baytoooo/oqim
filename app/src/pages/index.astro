@@ -1,13 +1,62 @@
 ---
+import fs from "node:fs";
+import path from "node:path";
 import Base from "../layouts/Base.astro";
 import SecHead from "../components/SecHead.astro";
 import SignalHead from "../components/SignalHead.astro";
 import { EVENT_NAME, PRODUCT } from "../config";
 import { bestMode, f, loadAudits, mmss, modeOf, vehiclesOf, weakCheck } from "../lib/audits";
 
+// ---------------------------------------------------------------- parking (the product)
+// Build-time reads of public/data: tracker.json (the tracker's own evaluation) and parking.json
+// (space detection measured on held-out PKLot images). Every number below comes from them.
+const readData = (file: string): any => {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(process.cwd(), "public", "data", file), "utf8"));
+  } catch {
+    return null;
+  }
+};
+const tracker = readData("tracker.json");
+const parking = readData("parking.json");
+const tEval = tracker?.eval ?? null;
+const lots: { id: string; name?: string; capacity?: number; date?: string }[] = Array.isArray(tracker?.lots) ? tracker.lots : [];
+const pTest = parking?.eval?.test ?? null;
+const pct = (x: number | undefined | null, d = 1) => (typeof x === "number" ? `${(x * 100).toFixed(d)}%` : "-");
+const num = (x: number | undefined | null, d = 1) => (typeof x === "number" ? x.toFixed(d) : "-");
+const int = (x: number | undefined | null) => (typeof x === "number" ? x.toLocaleString("en-US") : "-");
+const capacity = lots.reduce((s, l) => s + (l.capacity ?? 0), 0);
+
+// the hero frame: one PKLot image with its hand-labelled spaces
+const sample = (parking?.samples ?? []).find((x: any) => x.id === "pucpr_sunny_2012-09-11_1731") ?? parking?.samples?.[0] ?? null;
+const sampleSpaces: { occupied: boolean; poly: number[][] }[] = sample?.spaces ?? [];
+const sampleFree = sampleSpaces.filter((x) => !x.occupied).length;
+const sampleW = sample?.w ?? 1280;
+const sampleH = sample?.h ?? 720;
+const polyPts = (poly: number[][]) => poly.map(([x, y]) => `${x},${y}`).join(" ");
+
+const trackerSteps = [
+  { n: "01", t: "Mark the spaces", d: "Once per camera: the outline of every space on one frame. PKLot ships these outlines with its images." },
+  { n: "02", t: "Free or taken", d: "YOLO26n finds the cars, buses and trucks in each frame. A space is taken when one box covers 40% of it, and it changes only when two frames in a row agree." },
+  { n: "03", t: "In and out", d: "Frame by frame, a space that turns taken is a car coming in, and one that turns free is a car leaving." },
+  { n: "04", t: "Forecast", d: "The free spaces at the minute you will arrive, not the minute you ask: the count now plus the trend of the last 20 minutes and of the car park's usual weekday morning." },
+  { n: "05", t: "Advise", d: "Each driver gets a car park. Drivers already sent count against its free spaces, so they do not all go to the same one." },
+];
+
+const parkingProblems = [
+  { k: "Searching", t: "Cars looking for a space add to traffic", d: "A driver who finds a full car park drives on to the next one. In a 2017 INRIX study, US drivers spent 17 hours a year searching for parking." },
+  { k: "Not published", t: "Free spaces are rarely shown", d: "Parkopedia's own figure: only about 5% of off-street car parks publish live availability. Most drivers learn a car park is full at the gate." },
+  { k: "Tashkent", t: "Paid parking is growing", d: "Poytaxt Parking plans paid parking on 86 streets with 13,208 spaces. Spaces are first come, first served, with no count of what is free." },
+];
+
+const parkingAssumptions = [
+  { k: "Price", d: "Sold per camera per month to the car park operator. We have no price yet; it is the first thing to test with a buyer." },
+  { k: "Cameras", d: "Ordinary fixed cameras that already look over the car park. One camera covers the spaces it can see." },
+  { k: "Inference", d: "The detector is YOLO26n, 10 MB. On /parking it runs in the visitor's browser, so there is no server bill per frame." },
+];
+
+// ---------------------------------------------------------------- signals (the next stage)
 const { source, clips } = loadAudits();
-const first = clips[0];
-const firstVehicles = first ? vehiclesOf(first) : 0;
 
 // numbers from the sample audits (public/data/audits.json)
 const footageMin = clips.reduce((s, c) => s + c.duration, 0) / 60;
@@ -22,33 +71,15 @@ const predictiveWorse = clips.filter((c) => (modeOf(c, "predictive")?.meanDelay 
 const predictiveBetter = clips.filter((c) => (modeOf(c, "predictive")?.meanDelay ?? Infinity) < (modeOf(c, "measured")?.meanDelay ?? 0));
 const list = (xs: string[]) => (xs.length < 2 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`);
 
-// the setup of the sample junction, in the 960 x 540 still (the stop line of samples_src/make_audits.ts
-// and the vehicle head of public/pipeline/scene.json, both in 1920 px, halved)
-const LINE = [[142.5, 263.5], [465, 228.5]];
-const HEAD = { x: 567, y: 175, w: 23, h: 40 };
-
-const steps = [
+const signalSteps = [
   { n: "01", t: "Mark the junction", d: "On the first frame, draw a stop line across each approach and click its signal head." },
-  { n: "02", t: "Detect and track", d: "YOLO26s in ONNX Runtime Web, on WebGPU or WebAssembly, then ByteTrack, at 5 frames per second. All on your device; the video never leaves it." },
+  { n: "02", t: "Detect and track", d: "YOLO26s in ONNX Runtime Web, on WebGPU or WebAssembly, then ByteTrack, at 5 frames per second. The video never leaves the device." },
   { n: "03", t: "Measure", d: "The lights from the head's pixels, or from when the queue moves off if no head is in view. Crossings, waits, discharge rate, red-light runs." },
   { n: "04", t: "Check the model", d: "A point-queue model replays the clip's own vehicles. It has to give back the measured crossings first." },
   { n: "05", t: "Compare plans", d: "Now, the Webster (1958) formula, a tuned fixed plan searched on the replay, actuated, and OQIM predictive." },
 ];
-
-const problems = [
-  { k: "Set once", t: "Timing is checked by hand", d: "In most cities a signal's timing is set once and checked by hand. A manual junction study means people at the roadside counting cars and timing the lights." },
-  { k: "Offline", t: "The controllers cannot be read", d: "Most controllers in the city are not connected, so the timing they run cannot be read from them. Someone has to go to the junction and look." },
-  { k: "ATSPM", t: "Measured elsewhere from logs", d: "US cities measure signal performance, such as arrivals on green and split failures, from controller logs with a system called ATSPM. OQIM measures the same things from video, with no access to the controller." },
-];
-
-const assumptions = [
-  { k: "Price", d: "An audit is sold per junction and priced below a manual study of the same junction. We have no price yet; it is the first thing to test with a buyer." },
-  { k: "Field time", d: "Filming an approach takes at least 2 signal cycles, about 3 minutes of video, plus the trip to the junction." },
-  { k: "Processing", d: "About 1 minute of processing per minute of 1080p video on an Apple M5 laptop with WebGPU. Phones are slower." },
-  { k: "Inference", d: "Zero per camera. The model runs on the user's device, so there is no server bill per video." },
-];
 ---
-<Base title={PRODUCT} description="Open a video of a signalised junction. In your browser, OQIM reads the signal lights, counts the vehicles over the stop lines, measures queues and discharge, and checks new signal plans on a replay of the junction's own vehicles." active="home">
+<Base title={PRODUCT} description="A parking tracker from the cameras over a car park: free spaces counted, cars seen coming in and leaving, free spaces forecast for the moment you arrive, and drivers spread over the car parks nearby." active="home">
   <script is:inline>
     // the start sequence plays once per session
     try { var d = document.documentElement, s = sessionStorage; if (s.getItem("pv-intro")) d.classList.add("no-intro"); s.setItem("pv-intro", "1"); } catch (e) {}
@@ -61,50 +92,48 @@ const assumptions = [
         <span>{EVENT_NAME}</span>
       </p>
       <h1 id="hero-title">{PRODUCT}</h1>
-      <p class="hero-line">A traffic signal audit from <span class="mark">one video.</span></p>
+      <p class="hero-line">A free parking space, <span class="mark">before you get there.</span></p>
       <p class="lede">
-        Open a video of a signalised junction. In your browser, OQIM reads the signal lights from the pixels, counts every vehicle over the stop lines, measures queues and discharge, and checks new signal plans by replaying the junction's own vehicles.
+        Cameras over a car park count the free spaces and see each car come in and leave. OQIM forecasts how many spaces will be free at the minute you arrive, and tells each driver which car park to go to, so the drivers do not all go to the same one.
       </p>
       <div class="hero-cta">
-        <a class="btn primary go" href="/audit">Run an audit</a>
-        <a class="btn" href="/method">How it works</a>
+        <a class="btn primary go" href="/tracker">Open the tracker</a>
+        <a class="btn" href="/city">See a district live</a>
       </div>
     </div>
 
     <figure class="hero-fig">
       <div class="cam viewfinder hero-cam">
-        <img src="/media/background_960.jpg" alt="The sample junction from the camera, with the southbound stop line drawn across the lanes and a box around the vehicle signal head." width="960" height="540" loading="eager" decoding="async" fetchpriority="high" />
-        <svg class="setup" viewBox="0 0 960 540" aria-hidden="true">
-          <line class="s-line-shadow" x1={LINE[0][0]} y1={LINE[0][1]} x2={LINE[1][0]} y2={LINE[1][1]} />
-          <line class="s-line" x1={LINE[0][0]} y1={LINE[0][1]} x2={LINE[1][0]} y2={LINE[1][1]} />
-          <circle class="s-end" cx={LINE[0][0]} cy={LINE[0][1]} r="6" />
-          <circle class="s-end" cx={LINE[1][0]} cy={LINE[1][1]} r="6" />
-          <rect class="s-head" x={HEAD.x} y={HEAD.y} width={HEAD.w} height={HEAD.h} rx="2" />
-          <g class="s-tag" transform={`translate(${LINE[1][0] - 236} ${LINE[1][1] - 58})`}>
-            <rect width="222" height="34" rx="3" /><text x="12" y="23">stop line, southbound</text>
-          </g>
-          <g class="s-tag" transform={`translate(${HEAD.x + HEAD.w + 10} ${HEAD.y + 3})`}>
-            <rect width="134" height="34" rx="3" /><text x="12" y="23">signal head</text>
-          </g>
-        </svg>
-        {first && (
+        {sample ? (
+          <img src={sample.src} alt={`A PKLot camera frame of the ${sample.camera.toUpperCase()} car park, with every space outlined: free spaces in green, taken spaces in red.`} width={sampleW} height={sampleH} loading="eager" decoding="async" fetchpriority="high" />
+        ) : (
+          <img src="/media/background_960.jpg" alt="A camera frame." width="960" height="540" loading="eager" decoding="async" />
+        )}
+        {sampleSpaces.length > 0 && (
+          <svg class="spaces" viewBox={`0 0 ${sampleW} ${sampleH}`} aria-hidden="true">
+            {sampleSpaces.map((sp, i) => (
+              <polygon class:list={["sp", sp.occupied ? "taken" : "free"]} points={polyPts(sp.poly)} style={`--i:${i}`} />
+            ))}
+          </svg>
+        )}
+        {sample && (
           <div class="cam-hud" aria-hidden="true">
-            <span>{first.clip}</span>
-            {first.cycle !== null && <span>cycle {f(first.cycle, 0)} s</span>}
-            <span>{firstVehicles} vehicles southbound</span>
+            <span>{sample.camera.toUpperCase()}</span>
+            <span>{sample.time}</span>
+            <span>{sampleFree} free of {sampleSpaces.length}</span>
           </div>
         )}
       </div>
-      <figcaption class="hero-cap">The sample junction (a background frame of the organisers' footage) with the setup OQIM asks for: a stop line across the approach and a click on its signal head.</figcaption>
+      <figcaption class="hero-cap">A frame of the PKLot dataset (PUCPR car park, Curitiba) with its hand-labelled spaces: green is free, red is taken. The tracker reads the same frames from the camera, one after another.</figcaption>
     </figure>
   </section>
 
   <section class="section wrap" id="problem">
-    <SecHead num="01 The problem" title="Signal timing is set once and checked by hand">
-      <p>A junction cannot be retimed well without measuring it first. Today that measuring is done by people at the roadside.</p>
+    <SecHead num="01 The problem" title="Drivers circle because they cannot see free spaces">
+      <p>A driver picks a car park by distance or habit, finds it full, and drives on. While searching, that car is part of the traffic.</p>
     </SecHead>
     <ul class="problems" role="list">
-      {problems.map((p, i) => (
+      {parkingProblems.map((p, i) => (
         <li class="plate" data-reveal style={`--i:${i}`}>
           <span class="pr-k">{p.k}</span>
           <h3 class="plate-title">{p.t}</h3>
@@ -112,14 +141,15 @@ const assumptions = [
         </li>
       ))}
     </ul>
+    <p class="how-more"><a class="more" href="/elsewhere">Sources, and what other cities did about it</a></p>
   </section>
 
   <section class="section wrap" id="how">
-    <SecHead num="02 How it works" title="Five steps, all in the browser">
-      <p>OQIM predictive decides each second whether to end the green or hold it, from the next 30 s of arrivals. In the field those arrivals would come from the camera at the junction upstream; on one clip they come from the clip itself.</p>
+    <SecHead num="02 The tracker" title="From a car park camera to advice">
+      <p>The tracker watches each car park's camera, keeps the count of free spaces, and turns the ins and outs into a forecast for the time you will get there.</p>
     </SecHead>
     <ol class="route route-drive" role="list" data-reveal>
-      {steps.map((s) => (
+      {trackerSteps.map((s) => (
         <li>
           <span class="route-n" aria-hidden="true">{s.n}</span>
           <span class="route-t">{s.t}</span>
@@ -127,103 +157,74 @@ const assumptions = [
         </li>
       ))}
     </ol>
-    <p class="how-more"><a class="more" href="/method">The formulas, the checks and where it fails</a></p>
+    <p class="how-more"><a class="more" href="/tracker">Open the tracker</a></p>
   </section>
 
-  {clips.length > 0 && (
-    <section class="section wrap" id="numbers">
-      <SecHead num="03 Sample clips" title="What the audit found on our sample clips">
-        <p>Mean delay is the mean number of seconds a vehicle waits at the line in the replay. Lower is better. Each plan is run on the same vehicles, so the numbers compare plans on one clip, not clips with each other.</p>
-        <p class="src"><span class="src-k">Source</span> {source}.</p>
-      </SecHead>
+  <section class="section wrap" id="measured">
+    <SecHead num="03 Measured" title="How well it counts and forecasts">
+      {tEval ? (
+        <p>The tracker replays a morning of {lots.length > 0 ? `${lots.length} PKLot cameras` : "PKLot cameras"}{tracker?.clock ? `, ${tracker.clock.start} to ${tracker.clock.end}` : ""}, and is scored against the dataset's hand labels.</p>
+      ) : (
+        <p>Space detection is scored against the hand labels of the PKLot dataset, on images held out from the calibration.</p>
+      )}
+    </SecHead>
 
-      <div class="stats compact" role="group" aria-label="The sample clips in numbers" data-reveal>
-        <div class="stat"><span class="v">{clips.length}</span><span class="k">Clips</span><span class="s">one Tashkent junction</span></div>
-        <div class="stat"><span class="v">{footageMin.toFixed(1)}<small>min</small></span><span class="k">Footage</span><span class="s">in total</span></div>
-        <div class="stat"><span class="v">{vehicles}</span><span class="k">Vehicles over the stop line</span><span class="s">southbound, all clips</span></div>
-        <div class="stat"><span class="v">{cycleRange}<small>s</small></span><span class="k">Cycle</span><span class="s">measured from the lights</span></div>
-      </div>
-
-      <ul class="clips" role="list">
-        {clips.map((c, i) => {
-          const best = bestMode(c);
-          return (
-            <li class="panel clip" data-reveal style={`--i:${i}`}>
-              <div class="clip-top">
-                <h3 class="clip-id">{c.clip}</h3>
-                <p class="clip-meta mono">
-                  <span>{mmss(c.duration)} long</span>
-                  <span>cycle {f(c.cycle, 0)} s</span>
-                  <span>{vehiclesOf(c)} vehicles</span>
-                </p>
-              </div>
-              <p class="clip-check">
-                <span class="ck-k">Model check</span>
-                departures off by a median <b class="mono">{f(c.check.departureError, 2)} s</b>; wait in the model <b class="mono">{f(c.check.modelWait)} s</b>, measured <b class="mono">{f(c.check.measuredWait)} s</b>
-              </p>
-              <ol class="bars" role="list" aria-label={`Mean delay per plan on ${c.clip}`}>
-                {c.modes.map((m) => (
-                  <li class:list={["bar", { best: m.key === best.key, now: m.key === "measured" }]}>
-                    <span class="b-l">{m.label}</span>
-                    <span class="b-track" aria-hidden="true"><i style={`width:${((m.meanDelay / maxDelay) * 100).toFixed(1)}%`}></i></span>
-                    <span class="b-v mono">{f(m.meanDelay)} s</span>
-                  </li>
-                ))}
-              </ol>
-              {weakCheck(c) && (
-                <p class="callout warn clip-warn">
-                  This clip is {mmss(c.duration)} long, under the 3 minutes OQIM asks for, and the replay misses its departures by a median {f(c.check.departureError, 1)} s. Its plan numbers are shown, not trusted.
-                </p>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-
-      <div class="findings">
-        {websterWorse.length > 0 && (
-          <div class="callout zebra" data-reveal>
-            <p class="callout-k">The textbook plan lost</p>
-            <p>
-              The Webster formula gave more delay than the current timing on {websterWorse.length === clips.length ? `all ${clips.length}` : `${websterWorse.length} of ${clips.length}`} clips.
-              {websterCycles.length > 0 && ` Its cycles came out at ${Math.round(Math.min(...websterCycles))} to ${Math.round(Math.max(...websterCycles))} s, against ${cycleRange} s on the street.`}
-              {" "}That is why OQIM checks every plan on the replay before it recommends one.
-            </p>
-          </div>
+    {tEval && (
+      <div class="stats compact" role="group" aria-label="The tracker in numbers" data-reveal>
+        <div class="stat"><span class="v">{pct(tEval.accuracy)}</span><span class="k">Spaces right</span><span class="s">{int(tEval.frames)} frames, {int(tEval.spaces)} space readings</span></div>
+        <div class="stat"><span class="v">{num(tEval.freeErr?.median, 0)}<small> / {num(tEval.freeErr?.p90, 0)}</small></span><span class="k">Free count off by</span><span class="s">median / 90th percentile, spaces per frame</span></div>
+        {tEval.forecast && (
+          <div class="stat"><span class="v">{num(tEval.forecast.mae)}</span><span class="k">Forecast error, {tEval.forecast.h} min ahead</span><span class="s">mean absolute, spaces; "same as now" gives {num(tEval.forecast.naiveMae)}</span></div>
         )}
-        <div class="callout" data-reveal>
-          <p class="callout-k">{predictiveWorse.length > 0 ? "Predictive is not always better" : "Predictive, with one caveat"}</p>
-          <p>
-            OQIM predictive gave less delay than now on {predictiveBetter.length} of {clips.length} clips{predictiveWorse.length > 0 && `, and more on ${list(predictiveWorse.map((c) => c.clip))}`}.
-            It also assumes the arrivals of the next 30 s are known, which needs a second camera upstream.
-          </p>
-        </div>
+        {tEval.events && (
+          <div class="stat"><span class="v">{int(tEval.events.in)}<small> in</small> {int(tEval.events.out)}<small> out</small></span><span class="k">Cars seen</span><span class="s">coming in and leaving</span></div>
+        )}
       </div>
-    </section>
-  )}
+    )}
+
+    {pTest && (
+      <div class="stats compact second" role="group" aria-label="Space detection on held-out images" data-reveal>
+        <div class="stat"><span class="v">{pct(pTest.accuracy)}</span><span class="k">Spaces right, held out</span><span class="s">{int(pTest.images)} images, {int(pTest.spaces)} spaces</span></div>
+        <div class="stat"><span class="v">{pct(pTest.precision)}</span><span class="k">Precision, taken</span><span class="s">a space called taken is taken</span></div>
+        <div class="stat"><span class="v">{pct(pTest.recall)}</span><span class="k">Recall, taken</span><span class="s">taken spaces found</span></div>
+      </div>
+    )}
+    <p class="how-more"><a class="more" href="/parking">Space detection, image by image</a></p>
+  </section>
+
+  <section class="section wrap" id="district">
+    <SecHead num="04 A district" title="Many car parks, many drivers">
+      <p>One car park is not enough to advise a driver. On the district page OQIM works with live open data from Hong Kong: car park vacancy and traffic cameras in Kwun Tong.</p>
+    </SecHead>
+    <a class="plate zebra cta district-cta" href="/city" data-reveal>
+      <span class="plate-title">District model, Hong Kong</span>
+      <span class="plate-text">22 open traffic cameras and live car park vacancy in Kwun Tong: road load now and 10 minutes ahead, and drivers sent to car parks with each other's routes and spaces counted.</span>
+      <span class="cta-chev" aria-hidden="true"></span>
+    </a>
+  </section>
 
   <section class="section wrap" id="pays">
-    <SecHead num="04 Who pays" title="Sold per junction audit, run on the buyer's own device">
+    <SecHead num="05 Who pays" title="Sold per camera to the people who run car parks">
       <p>Every number in this section is an assumption. None has been checked with a buyer yet.</p>
     </SecHead>
     <div class="pays">
       <ul class="buyers" role="list">
         <li class="plate" data-reveal>
           <span class="pr-k">Buyer</span>
-          <h3 class="plate-title">The city's traffic management service</h3>
-          <p class="plate-text">It owns the signals and decides their timing. OQIM gives it a measured audit of a junction without connecting to the controller.</p>
+          <h3 class="plate-title">Car park operators</h3>
+          <p class="plate-text">Malls, business centres and hospitals with their own car parks. A live free count and a forecast fill more spaces and shorten the queue at the gate.</p>
         </li>
         <li class="plate" data-reveal style="--i:1">
           <span class="pr-k">Buyer</span>
-          <h3 class="plate-title">Contractors that run junction studies</h3>
-          <p class="plate-text">The firms that now do manual counts and timing studies. With OQIM, the counting at the roadside becomes a few minutes of filming.</p>
+          <h3 class="plate-title">The city</h3>
+          <p class="plate-text">Fewer cars searching for a space means less traffic around busy places. The district model shows the drivers spread over the car parks nearby.</p>
         </li>
       </ul>
       <div class="table-scroll cards-sm assume" data-reveal>
         <table>
           <thead><tr><th scope="col">What</th><th scope="col">Assumption</th></tr></thead>
           <tbody>
-            {assumptions.map((a) => (
+            {parkingAssumptions.map((a) => (
               <tr>
                 <th scope="row">{a.k} <span class="chip todo">assumption</span></th>
                 <td class="wide-sm">{a.d}</td>
@@ -235,21 +236,110 @@ const assumptions = [
     </div>
   </section>
 
+  <section class="section wrap next-stage" id="next">
+    <p class="ns-tag"><span>Next stage</span></p>
+    <SecHead num="06 Signals" title="The same cameras can later time the lights">
+      <p>Cameras that watch car parks and streets can also watch junctions. Our signal audit already reads the lights from one video of a junction, measures the traffic, and checks new signal plans on a replay of the junction's own vehicles. It is the next stage, after the tracker.</p>
+    </SecHead>
+    <ol class="route route-drive" role="list" data-reveal>
+      {signalSteps.map((s) => (
+        <li>
+          <span class="route-n" aria-hidden="true">{s.n}</span>
+          <span class="route-t">{s.t}</span>
+          <span class="route-d">{s.d}</span>
+        </li>
+      ))}
+    </ol>
+
+    {clips.length > 0 && (
+      <div class="ns-numbers">
+        <h3 class="ns-h">What the audit found on our sample clips</h3>
+        <p class="src">Mean delay is the mean number of seconds a vehicle waits at the line in the replay. Lower is better. Each plan is run on the same vehicles, so the numbers compare plans on one clip, not clips with each other. <span class="src-k">Source</span> {source}.</p>
+
+        <div class="stats compact" role="group" aria-label="The sample clips in numbers" data-reveal>
+          <div class="stat"><span class="v">{clips.length}</span><span class="k">Clips</span><span class="s">one Tashkent junction</span></div>
+          <div class="stat"><span class="v">{footageMin.toFixed(1)}<small>min</small></span><span class="k">Footage</span><span class="s">in total</span></div>
+          <div class="stat"><span class="v">{vehicles}</span><span class="k">Vehicles over the stop line</span><span class="s">southbound, all clips</span></div>
+          <div class="stat"><span class="v">{cycleRange}<small>s</small></span><span class="k">Cycle</span><span class="s">measured from the lights</span></div>
+        </div>
+
+        <ul class="clips" role="list">
+          {clips.map((c, i) => {
+            const best = bestMode(c);
+            return (
+              <li class="panel clip" data-reveal style={`--i:${i}`}>
+                <div class="clip-top">
+                  <h3 class="clip-id">{c.clip}</h3>
+                  <p class="clip-meta mono">
+                    <span>{mmss(c.duration)} long</span>
+                    <span>cycle {f(c.cycle, 0)} s</span>
+                    <span>{vehiclesOf(c)} vehicles</span>
+                  </p>
+                </div>
+                <p class="clip-check">
+                  <span class="ck-k">Model check</span>
+                  departures off by a median <b class="mono">{f(c.check.departureError, 2)} s</b>; wait in the model <b class="mono">{f(c.check.modelWait)} s</b>, measured <b class="mono">{f(c.check.measuredWait)} s</b>
+                </p>
+                <ol class="bars" role="list" aria-label={`Mean delay per plan on ${c.clip}`}>
+                  {c.modes.map((m) => (
+                    <li class:list={["bar", { best: m.key === best.key, now: m.key === "measured" }]}>
+                      <span class="b-l">{m.label}</span>
+                      <span class="b-track" aria-hidden="true"><i style={`width:${((m.meanDelay / maxDelay) * 100).toFixed(1)}%`}></i></span>
+                      <span class="b-v mono">{f(m.meanDelay)} s</span>
+                    </li>
+                  ))}
+                </ol>
+                {weakCheck(c) && (
+                  <p class="callout warn clip-warn">
+                    This clip is {mmss(c.duration)} long, under the 3 minutes OQIM asks for, and the replay misses its departures by a median {f(c.check.departureError, 1)} s. Its plan numbers are shown, not trusted.
+                  </p>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+
+        <div class="findings">
+          {websterWorse.length > 0 && (
+            <div class="callout zebra" data-reveal>
+              <p class="callout-k">The textbook plan lost</p>
+              <p>
+                The Webster formula gave more delay than the current timing on {websterWorse.length === clips.length ? `all ${clips.length}` : `${websterWorse.length} of ${clips.length}`} clips.
+                {websterCycles.length > 0 && ` Its cycles came out at ${Math.round(Math.min(...websterCycles))} to ${Math.round(Math.max(...websterCycles))} s, against ${cycleRange} s on the street.`}
+                {" "}That is why OQIM checks every plan on the replay before it recommends one.
+              </p>
+            </div>
+          )}
+          <div class="callout" data-reveal>
+            <p class="callout-k">{predictiveWorse.length > 0 ? "Predictive is not always better" : "Predictive, with one caveat"}</p>
+            <p>
+              OQIM predictive gave less delay than now on {predictiveBetter.length} of {clips.length} clips{predictiveWorse.length > 0 && `, and more on ${list(predictiveWorse.map((c) => c.clip))}`}.
+              It also assumes the arrivals of the next 30 s are known, which needs a second camera upstream.
+            </p>
+          </div>
+        </div>
+      </div>
+    )}
+    <p class="how-more"><a class="more" href="/method">The formulas, the checks and where it fails</a></p>
+  </section>
+
   <section class="section wrap" id="tools">
-    <h2 class="tools-h">From one junction to a district</h2>
+    <h2 class="tools-h">Every page of the project</h2>
     <ul class="tools-grid" role="list">
-      <li><a class="plate" href="/audit" data-reveal><span class="plate-title">Signal audit</span><span class="plate-text">One video: the lights read from the pixels, every crossing, waits, discharge, red-light runs, the elimination rules' events, a Purdue coordination diagram, and signal plans checked on the junction's own vehicles.</span></a></li>
-      <li><a class="plate" href="/network" data-reveal><span class="plate-title">Corridor in 3D</span><span class="plate-text">Pick up to five signalised junctions of Tashkent; the vehicles from the video drive them under the timing now and with a green wave.</span></a></li>
-      <li><a class="plate" href="/city" data-reveal><span class="plate-title">District model, Hong Kong</span><span class="plate-text">22 open traffic cameras and live car park vacancy in Kwun Tong: road load now and 10 minutes ahead, drivers sent to car parks with each other's routes counted.</span></a></li>
-      <li><a class="plate" href="/parking" data-reveal><span class="plate-title">Free spaces from a camera</span><span class="plate-text">Car park camera frames (PKLot): the detector marks every space free or taken in the browser; 97.4% of spaces right on 240 held-out images.</span></a></li>
-      <li><a class="plate" href="/elsewhere" data-reveal><span class="plate-title">It works elsewhere</span><span class="plate-text">Published results of retiming, green waves and parking guidance in other cities, and where Tashkent stands today.</span></a></li>
+      <li><a class="plate" href="/tracker" data-reveal><span class="plate-title">Parking tracker</span><span class="plate-text">Car park cameras over a morning: free spaces counted, cars coming in and leaving, free spaces forecast for your arrival, and advice on which car park to take.</span></a></li>
+      <li><a class="plate" href="/city" data-reveal><span class="plate-title">District model, Hong Kong</span><span class="plate-text">22 open traffic cameras and live car park vacancy in Kwun Tong: drivers sent to car parks with each other's routes counted.</span></a></li>
+      <li><a class="plate" href="/parking" data-reveal><span class="plate-title">Parking accuracy</span><span class="plate-text">Car park camera frames (PKLot): the detector marks every space free or taken in the browser{pTest ? `; ${pct(pTest.accuracy)} of spaces right on ${int(pTest.images)} held-out images` : ""}.</span></a></li>
+      <li><a class="plate" href="/audit" data-reveal><span class="plate-title">Signal audit <span class="chip">next stage</span></span><span class="plate-text">One video of a junction: the lights read from the pixels, every crossing, waits, discharge, red-light runs, and signal plans checked on the junction's own vehicles.</span></a></li>
+      <li><a class="plate" href="/network" data-reveal><span class="plate-title">Green wave 3D <span class="chip">next stage</span></span><span class="plate-text">Pick up to five signalised junctions of Tashkent; the vehicles from the video drive them under the timing now and with a green wave.</span></a></li>
+      <li><a class="plate" href="/roads" data-reveal><span class="plate-title">Roads</span><span class="plate-text">Road damage found in phone photos and put on a map. A side tool.</span></a></li>
+      <li><a class="plate" href="/elsewhere" data-reveal><span class="plate-title">It works elsewhere</span><span class="plate-text">Published results of parking guidance, retiming and green waves in other cities, and where Tashkent stands today.</span></a></li>
     </ul>
   </section>
 
   <section class="section wrap" id="start">
-    <a class="plate zebra cta" href="/audit" data-reveal>
-      <span class="plate-title">Run an audit</span>
-      <span class="plate-text">Open a video of a signalised junction, or start from a sample clip. The video stays on your device.</span>
+    <a class="plate zebra cta" href="/tracker" data-reveal>
+      <span class="plate-title">Open the tracker</span>
+      <span class="plate-text">Watch a morning of car park cameras: the free spaces, the cars coming and going, and the forecast for when you arrive.</span>
       <span class="cta-chev" aria-hidden="true"></span>
     </a>
   </section>
@@ -280,21 +370,15 @@ const assumptions = [
 
   .hero-cam { aspect-ratio: 16 / 9; }
   .hero-cam > img { position: absolute; inset: 0; }
-  .setup { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; }
-  .s-line-shadow { stroke: rgba(0, 0, 0, .55); stroke-width: 9; stroke-linecap: round; }
-  .s-line { stroke: var(--zebra); stroke-width: 5; stroke-linecap: round; }
-  .s-end { fill: var(--ink); stroke: var(--zebra); stroke-width: 3; }
-  .s-head { fill: none; stroke: var(--zebra); stroke-width: 2.5; stroke-dasharray: 5 3; }
-  .s-tag rect { fill: rgba(13, 14, 16, .86); stroke: var(--line-2); }
-  .s-tag text { font: 600 18px var(--font-mono); fill: var(--paint); }
+  .spaces { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; }
+  .sp { stroke-width: 2.5; stroke-linejoin: round; }
+  .sp.free { fill: rgba(63, 210, 127, .28); stroke: var(--sig-green); }
+  .sp.taken { fill: rgba(255, 91, 76, .22); stroke: var(--sig-red); }
   .hero-cap { margin: 10px 0 0; font-size: .875rem; line-height: 1.5; color: var(--muted); max-width: 70ch; }
   @media (prefers-reduced-motion: no-preference) {
-    .s-line { stroke-dasharray: 340; stroke-dashoffset: 340; animation: draw 900ms var(--ease-out) 500ms forwards; }
-    .s-head, .s-tag { animation: fade 400ms ease-out 1200ms backwards; }
-    :global(.no-intro) .s-line { animation: none; stroke-dashoffset: 0; }
-    :global(.no-intro) .s-head, :global(.no-intro) .s-tag { animation: none; }
+    .sp { animation: fade 300ms ease-out backwards; animation-delay: calc(400ms + var(--i) * 8ms); }
+    :global(.no-intro) .sp { animation: none; }
   }
-  @keyframes draw { to { stroke-dashoffset: 0; } }
   @keyframes fade { from { opacity: 0; } }
 
   /* ---------------------------------------------------------- problem */
@@ -342,6 +426,20 @@ const assumptions = [
   .assume th[scope="row"] .chip { margin-left: 6px; vertical-align: 1px; }
   .assume td { color: var(--paint-2); }
   @media (max-width: 640px) { .assume th[scope="row"] { white-space: normal; } }
+
+  /* ---------------------------------------------------------- measured, district, next stage */
+  .stats.second { margin-top: 14px; }
+  .district-cta { min-height: 0; }
+  .next-stage { border-top: 1px dashed var(--line-2); }
+  .ns-tag { margin: 0 0 18px; }
+  .ns-tag span {
+    display: inline-block; padding: 4px 10px; border: 1px solid var(--zebra); border-radius: var(--r-1);
+    font: 600 .75rem/1.3 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--zebra);
+  }
+  .ns-numbers { margin-top: 32px; }
+  .ns-h { margin: 0 0 8px; font: 700 clamp(1.4rem, 2.6vw, 1.9rem)/1.1 var(--font-display); }
+  .ns-numbers > .src { margin: 0 0 16px; max-width: 80ch; }
+  .tools-grid .chip { margin-left: 6px; vertical-align: 2px; }
 
   /* ---------------------------------------------------------- final call */
   .cta { min-height: 180px; padding: 36px 24px 28px; gap: 10px; }

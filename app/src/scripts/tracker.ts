@@ -3,7 +3,7 @@
 // advice of where to park, for one driver and for many asking at once.
 
 import { ASSET_CDN } from "../config";
-import { clock, forecast, frameAt, minutes, options, spread, taken, takenTrue, type Lot, type Trip } from "../oqim/tracker";
+import { clock, forecast, frameAt, minutes, options, spread, taken, takenTrue, wholeLot, type Lot, type Trip } from "../oqim/tracker";
 
 interface Data {
   source: string;
@@ -16,6 +16,7 @@ interface Data {
     accuracy: number;
     freeErr: { median: number; p90: number; mean: number };
     events: { in: number; out: number };
+    whole: { labelled: number; extra: number; labelledUsed: number; labelledFound: number; text: string };
     forecast: { h: number; mae: number; naiveMae: number; rmse: number; n: number };
     forecastByH: { h: number; mae: number; naiveMae: number; rmse: number; n: number }[];
   };
@@ -31,6 +32,10 @@ const TRIPS: Trip[] = [
 ];
 
 let data: Data;
+let whole: Lot[] = [];
+let mode: "whole" | "labelled" = "whole";
+/** The car parks as shown: every space the camera found, or the hand-labelled ones only. */
+const L = () => (mode === "whole" ? whole : data.lots);
 let sel = 0;
 let t0 = 0, t1 = 0, now = 0;
 let playing = true;
@@ -70,7 +75,7 @@ function recentSlope(lot: Lot, k: number) {
 // ---------------------------------------------------------------- camera
 
 function draw(force = false) {
-  const lot = data.lots[sel];
+  const lot = L()[sel];
   const k = frameAt(lot, now);
   $("tr-cam-name").textContent = `${lot.name}, ${lot.weekday} ${lot.date}`;
   if (k < 0) {
@@ -106,10 +111,12 @@ function draw(force = false) {
       ctx.closePath();
       ctx.fillStyle = on ? "rgba(255, 91, 76, 0.32)" : "rgba(63, 210, 127, 0.38)";
       ctx.fill();
+      ctx.setLineDash(lot.labelled !== undefined && i >= lot.labelled && !changed ? [5, 3] : []);
       ctx.lineWidth = changed ? 3.5 : 1.4;
       ctx.strokeStyle = changed ? (on ? "#ffb224" : "#ffffff") : on ? "rgba(255, 91, 76, 0.9)" : "rgba(63, 210, 127, 0.95)";
       ctx.stroke();
     });
+    ctx.setLineDash([]);
     shownFrame = key;
   }
   $("tr-cam-time").textContent = f.t;
@@ -135,7 +142,7 @@ function flash(lot: Lot, k: number) {
 function lotCards() {
   const box = $("tr-lots");
   box.innerHTML = "";
-  data.lots.forEach((lot, i) => {
+  L().forEach((lot, i) => {
     const b = document.createElement("button");
     b.type = "button";
     b.className = "lot";
@@ -153,7 +160,7 @@ function lotCards() {
 }
 
 function updateCards() {
-  data.lots.forEach((lot, i) => {
+  L().forEach((lot, i) => {
     const b = $("tr-lots").children[i] as HTMLElement;
     b.setAttribute("aria-pressed", String(i === sel));
     const k = frameAt(lot, now);
@@ -180,7 +187,7 @@ function updateCards() {
 
 function events() {
   const rows: { m: number; text: string }[] = [];
-  data.lots.forEach((lot) =>
+  L().forEach((lot) =>
     lot.frames.forEach((f) => {
       const m = minutes(f.t);
       if (m <= now && (f.in || f.out)) rows.push({ m, text: `${f.t}  ${lot.name}: ${f.in ? `${f.in} in` : ""}${f.in && f.out ? ", " : ""}${f.out ? `${f.out} out` : ""}` });
@@ -198,7 +205,7 @@ function events() {
 }
 
 function chart() {
-  const lot = data.lots[sel];
+  const lot = L()[sel];
   $("tr-chart-name").textContent = lot.name;
   const W = 640, H = 220, L = 36, R = 10, T = 10, B = 24;
   const x = (m: number) => L + ((m - t0) / (t1 - t0)) * (W - L - R);
@@ -219,7 +226,7 @@ function chart() {
   for (const v of [0, Math.round(lot.capacity / 2), lot.capacity]) grid += `<text x="${L - 6}" y="${y(v) + 4}" fill="#8b9096" font-size="11" text-anchor="end">${v}</text><line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="rgba(255,255,255,.07)"/>`;
   $("tr-chart").innerHTML =
     grid +
-    `<path d="${path(gt)}" fill="none" stroke="#c9cdd2" stroke-width="1.5" stroke-dasharray="2 3"/>` +
+    (mode === "labelled" ? `<path d="${path(gt)}" fill="none" stroke="#c9cdd2" stroke-width="1.5" stroke-dasharray="2 3"/>` : "") +
     `<path d="${path(det)}" fill="none" stroke="#ffb224" stroke-width="2.5"/>` +
     (fc ? `<path d="${fc}" fill="none" stroke="#57a6ff" stroke-width="2.5" stroke-dasharray="6 4"/>` : "") +
     `<line x1="${x(now)}" x2="${x(now)}" y1="${T}" y2="${H - B}" stroke="#fff" stroke-opacity=".5"/>`;
@@ -228,7 +235,7 @@ function chart() {
 function tripTable() {
   const t = $("tr-trip");
   t.innerHTML = "<tr><th>Car park</th><th>Drive, min</th><th>Walk to the door, min</th></tr>";
-  data.lots.forEach((lot, i) => {
+  L().forEach((lot, i) => {
     const tr = document.createElement("tr");
     tr.innerHTML = `<td></td><td><input type="number" min="1" max="40" data-k="drive" /></td><td><input type="number" min="0" max="20" data-k="walk" /></td>`;
     tr.querySelector("td")!.textContent = lot.name;
@@ -245,7 +252,7 @@ function tripTable() {
 }
 
 function advice() {
-  const opts = options(data.lots, now, TRIPS, sigma);
+  const opts = options(L(), now, TRIPS, sigma);
   const ok = opts.filter((o) => Number.isFinite(o.cost));
   const box = $("tr-advice");
   if (!ok.length) {
@@ -254,7 +261,7 @@ function advice() {
   }
   const best = ok.reduce((b, o) => (o.cost < b.cost ? o : b));
   const nearest = ok.reduce((b, o) => (TRIPS[o.lot].drive + TRIPS[o.lot].walk < TRIPS[b.lot].drive + TRIPS[b.lot].walk ? o : b));
-  const name = (i: number) => data.lots[i].name;
+  const name = (i: number) => L()[i].name;
   const pct = (c: number) => `${Math.round(c * 100)}%`;
   const free = (v: number) => Math.max(0, Math.round(v));
   let why = `About ${free(best.freeAtArrival)} spaces free when you get there at ${clock(now + TRIPS[best.lot].drive)}, a ${pct(best.chance)} chance of a space.`;
@@ -282,14 +289,14 @@ function advice() {
 function spreadPanel() {
   const n = Number(($("tr-n") as HTMLInputElement).value);
   $("tr-n-out").textContent = String(n);
-  const ok = data.lots.some((l) => frameAt(l, now) >= 0);
+  const ok = L().some((l) => frameAt(l, now) >= 0);
   const box = $("tr-spread");
   if (!ok) {
     box.innerHTML = "";
     return;
   }
-  const s = spread(data.lots, now, TRIPS, sigma, n);
-  const list = (c: number[]) => c.map((v, i) => (v ? `${data.lots[i].name} ${v}` : "")).filter(Boolean).join(", ");
+  const s = spread(L(), now, TRIPS, sigma, n);
+  const list = (c: number[]) => c.map((v, i) => (v ? `${L()[i].name} ${v}` : "")).filter(Boolean).join(", ");
   box.innerHTML = `<div class="cmp"><div><div class="h">Every navigator: the nearest car park</div><div class="big bad-n"></div><div class="s a"></div></div><div><div class="h">OQIM: one by one, counting the drivers already sent</div><div class="big good-n"></div><div class="s b"></div></div></div>`;
   const big = box.querySelectorAll(".big");
   big[0].textContent = `${s.nearest.full} of ${n}`;
@@ -306,7 +313,8 @@ function stats() {
     [`${(e.accuracy * 100).toFixed(1)}%`, `of ${e.spaces.toLocaleString("en")} space checks on ${e.frames} frames agree with the hand labels`],
     [`${e.freeErr.median} / ${e.freeErr.p90}`, "spaces off in the free count: median / 90th percentile"],
     [`${e.forecast.mae.toFixed(1)}`, `spaces off, forecast ${e.forecast.h} minutes ahead, against ${e.forecast.naiveMae.toFixed(1)} for "as many as now"`],
-    [`${e.events.in} / ${e.events.out}`, "cars seen coming in / leaving over the three mornings"],
+    [`${e.events.in} / ${e.events.out}`, "cars seen coming in / leaving the labelled spaces over the three mornings"],
+    [`+${e.whole.extra}`, `spaces found outside the ${e.whole.labelled} hand-labelled ones, from where cars stay; the same method finds ${e.whole.labelledFound} of the ${e.whole.labelledUsed} labelled spaces that cars used (${Math.round((100 * e.whole.labelledFound) / e.whole.labelledUsed)}%)`],
   ];
   const box = $("tr-stats");
   box.innerHTML = "";
@@ -320,7 +328,7 @@ function stats() {
   const days = data.lots.map((l) => `${l.name} on ${l.weekday} ${l.date} (${l.capacity} spaces, ${l.frames.length} frames, typical day from ${l.profileDays.length} other weekdays)`).join("; ");
   $("tr-notes").textContent =
     `A replay of real camera frames from the PKLot dataset: car parks of two universities in Curitiba, Brazil, one frame every 5 minutes (UFPR04 every 5 to 15). Each car park was recorded on a different morning; here they run on one clock: ${days}. ` +
-    `Spaces taken: ${data.detector}. These counts were computed from the frames before; the forecast, the chance of a space and the advice run in this page. ` +
+    `Spaces taken: ${data.detector}. Whole car park (dashed spaces): ${data.eval.whole.text}; a space nobody parked in this morning is not found. These counts were computed from the frames before; the forecast, the chance of a space and the advice run in this page. ` +
     `Forecast: ${(data.eval as unknown as { forecastText: string }).forecastText}. Drive and walk times are an example trip; a driver who finds the car park full is counted as losing 8 minutes looking in the street. Source: ${data.source}.`;
 }
 
@@ -339,8 +347,8 @@ function update(force = false) {
 
 function preload() {
   // the selected camera first, then the others, a few at a time
-  const order = [sel, ...data.lots.map((_, i) => i).filter((i) => i !== sel)];
-  const srcs = order.flatMap((i) => data.lots[i].frames.map((f) => f.src));
+  const order = [sel, ...L().map((_, i) => i).filter((i) => i !== sel)];
+  const srcs = order.flatMap((i) => L()[i].frames.map((f) => f.src));
   let i = 0;
   const next = () => {
     if (i >= srcs.length) return;
@@ -357,7 +365,8 @@ function preload() {
 async function main() {
   data = (await (await fetch("/data/tracker.json")).json()) as Data;
   // the clock starts when the first two cameras are recording
-  const starts = data.lots.map((l) => minutes(l.frames[0].t)).sort((a, b) => a - b);
+  whole = data.lots.map(wholeLot);
+  const starts = L().map((l) => minutes(l.frames[0].t)).sort((a, b) => a - b);
   t0 = Math.max(minutes(data.clock.start), starts[Math.min(1, starts.length - 1)]);
   t1 = minutes(data.clock.end);
   now = t0;
@@ -382,6 +391,15 @@ async function main() {
   });
   $("tr-speed").addEventListener("change", (e) => (speed = Number((e.target as HTMLSelectElement).value)));
   $("tr-n").addEventListener("input", () => spreadPanel());
+  document.querySelectorAll<HTMLButtonElement>("[data-view]").forEach((b) =>
+    b.addEventListener("click", () => {
+      mode = b.dataset.view as typeof mode;
+      document.querySelectorAll<HTMLButtonElement>("[data-view]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+      lotCards();
+      shownFrame = -1;
+      update(true);
+    }),
+  );
 
   // a timer, not requestAnimationFrame: the replay goes on when the page is in a background pane
   let last = performance.now();
