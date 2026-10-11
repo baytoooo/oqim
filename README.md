@@ -14,7 +14,7 @@ US cities measure the same kind of thing (arrivals on green, split failures) fro
 cd app
 pnpm install
 pnpm dev      # http://localhost:4321
-pnpm test     # node --test, the audit core and the pipeline
+pnpm test     # node --test, the audit core on a simulated junction
 pnpm build    # static site in app/dist
 ```
 

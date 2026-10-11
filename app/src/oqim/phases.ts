@@ -59,21 +59,33 @@ export function runsOf<T>(t: number[], v: T[], end: number): { value: T; start: 
 /**
  * The light of head k in every frame. Each colour is scaled between its dark level (20th percentile
  * over the clip) and its lit level (97th); a colour whose two levels are close never lights and is
- * left out. Then: runs shorter than `blip` s between two runs of the same light take that light, and
- * dark spells of up to `flash` s inside green (the flashing green before amber) stay green.
+ * left out. LED heads flicker on camera (a lit lamp looks dark in some frames), so each colour takes
+ * the brightest value within `hold` s around the frame; the stronger colour wins if it is at least a
+ * quarter lit. Then: runs shorter than `blip` s between two runs of the same light take that light
+ * (no signal phase is that short, amber aside),
+ * and dark spells of up to `flash` s inside green (the flashing green before amber) stay green.
  */
-export function headLights(series: HeadSeries, k: number, blip = 0.7, flash = 1.6): Light[] {
+export function headLights(series: HeadSeries, k: number, blip = 3, flash = 3, hold = 0.6): Light[] {
   const n = series.t.length;
+  const tt = series.t;
   const ch = [0, 2].map((c) => {
     const v = series.scores.map((s) => s[k][c]);
     const lo = percentile(v, 20), hi = percentile(v, 97);
-    return hi - lo < 12 ? null : v.map((x) => (x - lo) / (hi - lo));
+    if (hi - lo < 12) return null;
+    const norm = v.map((x) => (x - lo) / (hi - lo));
+    // running maximum over +-hold s
+    return norm.map((_, i) => {
+      let m = -Infinity;
+      for (let j = i; j >= 0 && tt[i] - tt[j] <= hold; j--) m = Math.max(m, norm[j]);
+      for (let j = i + 1; j < n && tt[j] - tt[i] <= hold; j++) m = Math.max(m, norm[j]);
+      return m;
+    });
   });
   const [nr, ng] = ch;
   const raw: Light[] = Array.from({ length: n }, (_, i) => {
     const r = nr ? nr[i] : 0, g = ng ? ng[i] : 0;
-    if (g >= 0.5 && g > r) return "green";
-    if (r >= 0.5 && r > g) return "red";
+    if (g >= 0.25 && g > r + 0.08) return "green";
+    if (r >= 0.25 && r > g + 0.08) return "red";
     return "other";
   });
   const t = series.t;

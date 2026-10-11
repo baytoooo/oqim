@@ -281,8 +281,14 @@ export function audit(input: AuditInput): Audit {
   const w = plan(websterCycle);
   const webster = run({ kind: "fixed", ...w });
 
-  // the cycle that loses least on this clip's own vehicles, split as Webster's
+  // the cycle that loses least on this clip's own vehicles, split as Webster's; the current timing,
+  // run as a fixed plan, is a candidate too
   let best = { C: websterCycle, ...w, sim: webster };
+  if (cycle !== null) {
+    const cur = { greens: greenNow, hidden };
+    const sim = run({ kind: "fixed", ...cur });
+    if (sim.vehHours < best.sim.vehHours - 1e-9) best = { C: cycle, ...cur, sim };
+  }
   for (let C = DEFAULTS.minCycle; C <= DEFAULTS.maxCycle; C += 5) {
     const p = plan(C);
     const sim = run({ kind: "fixed", ...p });

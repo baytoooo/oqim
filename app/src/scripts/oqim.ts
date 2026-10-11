@@ -343,7 +343,7 @@ function renderReport(a: Audit, r: ClipResult): void {
   $("verdict").innerHTML =
     gain > 0.05
       ? `<strong>${esc(best.label)}</strong> cuts the mean wait at the stop line from <strong>${fmt(now.sim.meanDelay)} s</strong> to <strong class="good">${fmt(best.sim.meanDelay)} s</strong> per vehicle (${fmt(gain * 100, 0)}% less) on this clip's own ${vehicles} vehicles. Plan: ${planText(a, best)}.`
-      : `The current timing is close to the best plan we found for this traffic: the best alternative (${esc(best.label)}) changes the mean wait by ${fmt(gain * 100, 0)}%. ${a.oversaturated ? "Demand is near capacity, so retiming alone will not help." : ""}`;
+      : `<strong>Keep the current timing.</strong> None of the plans we tried beats it by more than 5% on this clip's own ${vehicles} vehicles: the best one, ${esc(best.label)}, gives ${fmt(best.sim.meanDelay)} s of waiting per vehicle against ${fmt(now.sim.meanDelay)} s now. ${a.oversaturated ? "Demand is near capacity, so retiming alone will not help." : ""}`;
   const stat = (v: string, l: string) => `<div class="stat"><div class="v">${v}</div><div class="l">${l}</div></div>`;
   const first = a.approaches[0];
   $("stats").innerHTML = [

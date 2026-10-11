@@ -4,8 +4,8 @@
   {
    "clip": "C3896",
    "duration": 340.3,
-   "cycle": 75,
-   "hidden": 35,
+   "cycle": 75.1,
+   "hidden": 35.1,
    "Y": 0.5,
    "approaches": [
     {
@@ -25,40 +25,40 @@
      "key": "measured",
      "label": "Now",
      "meanDelay": 9.3,
-     "vehHours": 0.333,
+     "vehHours": 0.335,
      "leftWaiting": 0,
-     "cycle": 75
+     "cycle": 75.1
     },
     {
      "key": "webster",
      "label": "Webster plan",
-     "meanDelay": 11.3,
-     "vehHours": 0.404,
-     "leftWaiting": 3,
-     "cycle": 47.7
+     "meanDelay": 12.3,
+     "vehHours": 0.441,
+     "leftWaiting": 6,
+     "cycle": 45.6
     },
     {
      "key": "tuned",
      "label": "Tuned fixed plan",
      "meanDelay": 9.4,
-     "vehHours": 0.335,
+     "vehHours": 0.337,
      "leftWaiting": 0,
-     "cycle": 75
+     "cycle": 75.1
     },
     {
      "key": "actuated",
      "label": "Actuated",
-     "meanDelay": 22,
-     "vehHours": 0.789,
+     "meanDelay": 21.6,
+     "vehHours": 0.773,
      "leftWaiting": 9,
      "cycle": null
     },
     {
      "key": "predictive",
      "label": "OQIM predictive",
-     "meanDelay": 9.4,
-     "vehHours": 0.337,
-     "leftWaiting": 2,
+     "meanDelay": 9.1,
+     "vehHours": 0.325,
+     "leftWaiting": 0,
      "cycle": null
     }
    ],
@@ -73,7 +73,7 @@
    "clip": "C3897",
    "duration": 317.8,
    "cycle": 75.1,
-   "hidden": 35.1,
+   "hidden": 35,
    "Y": 0.49,
    "approaches": [
     {
@@ -81,10 +81,10 @@
      "vehicles": 127,
      "flowPerHour": 1439,
      "meanWait": 10.5,
-     "arrivalsOnGreen": 0.61,
+     "arrivalsOnGreen": 0.62,
      "headway": 0.67,
-     "greenMean": 36,
-     "redRuns": 1,
+     "greenMean": 36.1,
+     "redRuns": 0,
      "maxQueue": 17
     }
    ],
@@ -93,65 +93,65 @@
      "key": "measured",
      "label": "Now",
      "meanDelay": 10,
-     "vehHours": 0.349,
+     "vehHours": 0.354,
      "leftWaiting": 1,
      "cycle": 75.1
     },
     {
      "key": "webster",
      "label": "Webster plan",
-     "meanDelay": 13.5,
-     "vehHours": 0.473,
+     "meanDelay": 13.3,
+     "vehHours": 0.468,
      "leftWaiting": 0,
      "cycle": 43.7
     },
     {
      "key": "tuned",
      "label": "Tuned fixed plan",
-     "meanDelay": 9.7,
-     "vehHours": 0.34,
-     "leftWaiting": 1,
+     "meanDelay": 9.4,
+     "vehHours": 0.332,
+     "leftWaiting": 0,
      "cycle": 75
     },
     {
      "key": "actuated",
      "label": "Actuated",
-     "meanDelay": 24.4,
-     "vehHours": 0.853,
+     "meanDelay": 24.6,
+     "vehHours": 0.868,
      "leftWaiting": 0,
      "cycle": null
     },
     {
      "key": "predictive",
      "label": "OQIM predictive",
-     "meanDelay": 8.3,
-     "vehHours": 0.291,
+     "meanDelay": 8.7,
+     "vehHours": 0.308,
      "leftWaiting": 0,
      "cycle": null
     }
    ],
    "check": {
-    "departureError": 0.09,
-    "measuredWait": 10.4,
+    "departureError": 0.29,
+    "measuredWait": 10.5,
     "modelWait": 10,
-    "vehicles": 106
+    "vehicles": 107
    }
   },
   {
    "clip": "C3902",
    "duration": 317.8,
-   "cycle": 80,
-   "hidden": 40.6,
-   "Y": 0.56,
+   "cycle": 80.1,
+   "hidden": 40,
+   "Y": 0.55,
    "approaches": [
     {
      "name": "Southbound",
      "vehicles": 170,
      "flowPerHour": 1926,
      "meanWait": 11.9,
-     "arrivalsOnGreen": 0.58,
+     "arrivalsOnGreen": 0.59,
      "headway": 0.53,
-     "greenMean": 35.3,
+     "greenMean": 36.1,
      "redRuns": 1,
      "maxQueue": 22
     }
@@ -160,48 +160,48 @@
     {
      "key": "measured",
      "label": "Now",
-     "meanDelay": 13.1,
-     "vehHours": 0.617,
+     "meanDelay": 12.3,
+     "vehHours": 0.578,
      "leftWaiting": 0,
-     "cycle": 80
+     "cycle": 80.1
     },
     {
      "key": "webster",
      "label": "Webster plan",
-     "meanDelay": 16.9,
-     "vehHours": 0.793,
-     "leftWaiting": 22,
-     "cycle": 47.4
+     "meanDelay": 16.6,
+     "vehHours": 0.778,
+     "leftWaiting": 25,
+     "cycle": 47.1
     },
     {
      "key": "tuned",
      "label": "Tuned fixed plan",
-     "meanDelay": 13.5,
-     "vehHours": 0.632,
+     "meanDelay": 13.2,
+     "vehHours": 0.618,
      "leftWaiting": 1,
-     "cycle": 80
+     "cycle": 80.1
     },
     {
      "key": "actuated",
      "label": "Actuated",
-     "meanDelay": 22.5,
-     "vehHours": 1.058,
+     "meanDelay": 21.6,
+     "vehHours": 1.012,
      "leftWaiting": 0,
      "cycle": null
     },
     {
      "key": "predictive",
      "label": "OQIM predictive",
-     "meanDelay": 13.8,
-     "vehHours": 0.648,
+     "meanDelay": 13,
+     "vehHours": 0.613,
      "leftWaiting": 0,
      "cycle": null
     }
    ],
    "check": {
-    "departureError": 0.57,
+    "departureError": 0.55,
     "measuredWait": 12,
-    "modelWait": 13.1,
+    "modelWait": 12.3,
     "vehicles": 145
    }
   },
@@ -209,17 +209,17 @@
    "clip": "C3905",
    "duration": 127.6,
    "cycle": 80,
-   "hidden": 38,
-   "Y": 0.7,
+   "hidden": 36.9,
+   "Y": 0.68,
    "approaches": [
     {
      "name": "Southbound",
      "vehicles": 59,
      "flowPerHour": 1664,
      "meanWait": 6.6,
-     "arrivalsOnGreen": 0.68,
+     "arrivalsOnGreen": 0.71,
      "headway": 0.81,
-     "greenMean": 37.9,
+     "greenMean": 39,
      "redRuns": 0,
      "maxQueue": 13
     }
@@ -228,48 +228,48 @@
     {
      "key": "measured",
      "label": "Now",
-     "meanDelay": 11.5,
-     "vehHours": 0.188,
+     "meanDelay": 10.3,
+     "vehHours": 0.168,
      "leftWaiting": 0,
      "cycle": 80
     },
     {
      "key": "webster",
      "label": "Webster plan",
-     "meanDelay": 14.6,
-     "vehHours": 0.238,
+     "meanDelay": 13,
+     "vehHours": 0.213,
      "leftWaiting": 0,
-     "cycle": 73.3
+     "cycle": 71.9
     },
     {
      "key": "tuned",
      "label": "Tuned fixed plan",
-     "meanDelay": 7.7,
-     "vehHours": 0.126,
-     "leftWaiting": 3,
+     "meanDelay": 7.2,
+     "vehHours": 0.119,
+     "leftWaiting": 2,
      "cycle": 90
     },
     {
      "key": "actuated",
      "label": "Actuated",
-     "meanDelay": 7.5,
-     "vehHours": 0.122,
+     "meanDelay": 7,
+     "vehHours": 0.115,
      "leftWaiting": 0,
      "cycle": null
     },
     {
      "key": "predictive",
      "label": "OQIM predictive",
-     "meanDelay": 7.7,
-     "vehHours": 0.127,
-     "leftWaiting": 4,
+     "meanDelay": 7.3,
+     "vehHours": 0.119,
+     "leftWaiting": 3,
      "cycle": null
     }
    ],
    "check": {
-    "departureError": 5.04,
+    "departureError": 4.54,
     "measuredWait": 6.6,
-    "modelWait": 11.5,
+    "modelWait": 10.3,
     "vehicles": 52
    }
   }
